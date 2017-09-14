@@ -5,8 +5,8 @@ android {
     buildToolsVersion "25.0.2"
     defaultConfig {
         applicationId "com.example.ilona.flightsimprototype"
-        minSdkVersion 15
-        targetSdkVersion 25
+        minSdkVersion 19
+        targetSdkVersion 24
         versionCode 1
         versionName "1.0"
         testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
@@ -26,5 +26,10 @@ dependencies {
     })
     compile 'com.android.support:appcompat-v7:25.3.1'
     compile 'com.android.support.constraint:constraint-layout:1.0.2'
+    // Adds Google VR spatial audio support
+    compile 'com.google.vr:sdk-audio:1.80.0'
+
+    // Required for all Google VR apps
+    compile 'com.google.vr:sdk-base:1.80.0'
     testCompile 'junit:junit:4.12'
 }

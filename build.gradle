@@ -7,6 +7,12 @@ buildscript {
     dependencies {
         classpath 'com.android.tools.build:gradle:2.3.3'
 
+        // The Google VR SDK requires version 2.3.3 or higher.
+        //classpath 'com.android.tools.build:gradle:2.3.3'
+
+        // The Google VR NDK requires experimental version 0.9.3 or higher.
+        classpath 'com.android.tools.build:gradle-experimental:0.9.3'
+
         // NOTE: Do not place your application dependencies here; they belong
         // in the individual module build.gradle files
     }
@@ -18,6 +24,30 @@ allprojects {
     }
 }
 
+
 task clean(type: Delete) {
     delete rootProject.buildDir
 }
+
+// The dependencies for NDK builds live inside the .aar files so they need to
+// be extracted before NDK targets can build.
+task extractAudioSo(type: Copy) {
+    from zipTree("${project.rootDir}/libraries/sdk-audio-1.80.0.aar")
+    into "${project.rootDir}/libraries/"
+    include "jni/**/libgvr_audio.so"
+}
+
+task extractGvrSo(type: Copy) {
+    from zipTree("${project.rootDir}/libraries/sdk-base-1.80.0.aar")
+    into "${project.rootDir}/libraries/"
+    include "jni/**/libgvr.so"
+}
+
+task extractNdk { }
+extractNdk.dependsOn extractAudioSo
+extractNdk.dependsOn extractGvrSo
+
+task deleteNdk(type: Delete) {
+    delete "${project.rootDir}/libraries/jni"
+}
+clean.dependsOn(deleteNdk)
