@@ -240,6 +240,7 @@ public final class WorldLayoutData {
             0, 0, -200,
             -200, 0, 0,
             0, 0, 0,
+
     };
 
     public static final float[] FLOOR_NORMALS = new float[] {

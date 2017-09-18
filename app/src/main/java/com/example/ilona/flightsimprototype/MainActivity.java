@@ -23,6 +23,7 @@ import java.io.InputStreamReader;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
+import java.nio.ShortBuffer;
 
 import javax.microedition.khronos.egl.EGLConfig;
 
@@ -35,7 +36,7 @@ public class MainActivity extends GvrActivity implements GvrView.StereoRenderer{
     private static final float Z_NEAR = 0.1f;
     private static final float Z_FAR = 100.0f;
 
-    private static final float CAMERA_Z = 0.01f;
+    private static final float CAMERA_Z = 0.501f;
     private static final float TIME_DELTA = 0.3f;
 
     private static final float YAW_LIMIT = 0.12f;
@@ -57,9 +58,15 @@ public class MainActivity extends GvrActivity implements GvrView.StereoRenderer{
 
     private final float[] lightPosInEyeSpace = new float[4];
 
+    private int VERTEX_COUNT = 9;
+    private int SIZE = 800;
+
     private FloatBuffer floorVertices;
     private FloatBuffer floorColors;
     private FloatBuffer floorNormals;
+    private ShortBuffer floorIndices;
+
+    short[] indices;
 
     private FloatBuffer cubeVertices;
     private FloatBuffer cubeColors;
@@ -163,7 +170,7 @@ public class MainActivity extends GvrActivity implements GvrView.StereoRenderer{
         view = new float[16];
         modelViewProjection = new float[16];
         modelView = new float[16];
-        modelFloor = new float[16];
+        modelFloor = new float[20];
         tempPosition = new float[4];
         // Model first appears directly in front of user.
         modelPosition = new float[] {0.0f, 0.0f, -MAX_MODEL_DISTANCE / 2.0f};
@@ -259,23 +266,73 @@ public class MainActivity extends GvrActivity implements GvrView.StereoRenderer{
         cubeNormals.position(0);
 
         // make a floor
-        ByteBuffer bbFloorVertices = ByteBuffer.allocateDirect(WorldLayoutData.FLOOR_COORDS.length * 4);
+        int count = VERTEX_COUNT * VERTEX_COUNT;
+        float[] vertices = new float[count * 3];
+        float[] normals = new float[count * 3];
+        float[] colors = new float[count*4];
+        indices = new short[6*(VERTEX_COUNT-1)*(VERTEX_COUNT-1)];
+        int vertexPointer = 0;
+        for(int i=0;i<VERTEX_COUNT;i++){
+            for(int j=0;j<VERTEX_COUNT;j++){
+                vertices[vertexPointer*3] = (float)j/((float)VERTEX_COUNT - 1) * SIZE ;
+                vertices[vertexPointer*3+1] = 0;
+                vertices[vertexPointer*3+2] = (float)i/((float)VERTEX_COUNT - 1) * SIZE ;
+                normals[vertexPointer*3] = 0;
+                normals[vertexPointer*3+1] = 1;
+                normals[vertexPointer*3+2] = 0;
+                colors[vertexPointer*4] = 0.0f;
+                colors[vertexPointer*4+1] = 0.3398f;
+                colors[vertexPointer*4+2] = 0.9023f;
+                colors[vertexPointer*4+3] = 1.0f;
+                vertexPointer++;
+            }
+        }
+
+        int pointer = 0;
+        for(int gz=0;gz<VERTEX_COUNT-1;gz++){
+            for(int gx=0;gx<VERTEX_COUNT-1;gx++){
+                int topLeft = (gz*VERTEX_COUNT)+gx;
+                int topRight = topLeft + 1;
+                int bottomLeft = ((gz+1)*VERTEX_COUNT)+gx;
+                int bottomRight = bottomLeft + 1;
+                indices[pointer++] = (short) topLeft;
+                indices[pointer++] = (short) bottomLeft;
+                indices[pointer++] = (short) topRight;
+                indices[pointer++] = (short) topRight;
+                indices[pointer++] = (short) bottomLeft;
+                indices[pointer++] = (short) bottomRight;
+            }
+        }
+
+        //ByteBuffer bbFloorVertices = ByteBuffer.allocateDirect(WorldLayoutData.FLOOR_COORDS.length * 4);
+        ByteBuffer bbFloorVertices = ByteBuffer.allocateDirect(vertices.length * 4);
         bbFloorVertices.order(ByteOrder.nativeOrder());
         floorVertices = bbFloorVertices.asFloatBuffer();
-        floorVertices.put(WorldLayoutData.FLOOR_COORDS);
+        floorVertices.put(vertices);
         floorVertices.position(0);
 
-        ByteBuffer bbFloorNormals = ByteBuffer.allocateDirect(WorldLayoutData.FLOOR_NORMALS.length * 4);
+        //ByteBuffer bbFloorNormals = ByteBuffer.allocateDirect(WorldLayoutData.FLOOR_NORMALS.length * 4);
+        ByteBuffer bbFloorNormals = ByteBuffer.allocateDirect(normals.length * 4);
         bbFloorNormals.order(ByteOrder.nativeOrder());
         floorNormals = bbFloorNormals.asFloatBuffer();
-        floorNormals.put(WorldLayoutData.FLOOR_NORMALS);
+        floorNormals.put(normals);
         floorNormals.position(0);
 
-        ByteBuffer bbFloorColors = ByteBuffer.allocateDirect(WorldLayoutData.FLOOR_COLORS.length * 4);
+        //ByteBuffer bbFloorColors = ByteBuffer.allocateDirect(WorldLayoutData.FLOOR_COLORS.length * 4);
+        ByteBuffer bbFloorColors = ByteBuffer.allocateDirect(colors.length * 4);
         bbFloorColors.order(ByteOrder.nativeOrder());
         floorColors = bbFloorColors.asFloatBuffer();
-        floorColors.put(WorldLayoutData.FLOOR_COLORS);
+        //floorColors.put(WorldLayoutData.FLOOR_COLORS);
+        floorColors.put(colors);
         floorColors.position(0);
+
+        //ByteBuffer bbFloorColors = ByteBuffer.allocateDirect(WorldLayoutData.FLOOR_COLORS.length * 4);
+        ByteBuffer bbFloorIndices = ByteBuffer.allocateDirect(indices.length * 2);
+        bbFloorIndices.order(ByteOrder.nativeOrder());
+        floorIndices = bbFloorIndices.asShortBuffer();
+        floorIndices.put(indices);
+        floorIndices.position(0);
+
 
         int vertexShader = loadGLShader(GLES20.GL_VERTEX_SHADER, R.raw.light_vertex);
         int gridShader = loadGLShader(GLES20.GL_FRAGMENT_SHADER, R.raw.grid_fragment);
@@ -435,7 +492,7 @@ public class MainActivity extends GvrActivity implements GvrView.StereoRenderer{
         float[] perspective = eye.getPerspective(Z_NEAR, Z_FAR);
         Matrix.multiplyMM(modelView, 0, view, 0, modelCube, 0);
         Matrix.multiplyMM(modelViewProjection, 0, perspective, 0, modelView, 0);
-        //drawCube();
+        drawCube();
 
         // Set modelView for the floor, so we draw floor in the correct location
         Matrix.multiplyMM(modelView, 0, view, 0, modelFloor, 0);
@@ -515,7 +572,8 @@ public class MainActivity extends GvrActivity implements GvrView.StereoRenderer{
         GLES20.glEnableVertexAttribArray(floorNormalParam);
         GLES20.glEnableVertexAttribArray(floorColorParam);
 
-        GLES20.glDrawArrays(GLES20.GL_TRIANGLES, 0, 24);
+        //GLES20.glDrawArrays(GLES20.GL_TRIANGLES, 0, 24);
+        GLES20.glDrawElements(GLES20.GL_TRIANGLES, indices.length, GLES20.GL_UNSIGNED_SHORT, floorIndices);
 
         GLES20.glDisableVertexAttribArray(floorPositionParam);
         GLES20.glDisableVertexAttribArray(floorNormalParam);
@@ -579,6 +637,7 @@ public class MainActivity extends GvrActivity implements GvrView.StereoRenderer{
      */
     private boolean isLookingAtObject() {
         // Convert object space to camera space. Use the headView from onNewFrame.
+
         Matrix.multiplyMM(modelView, 0, headView, 0, modelCube, 0);
         Matrix.multiplyMV(tempPosition, 0, modelView, 0, POS_MATRIX_MULTIPLY_VEC, 0);
 
