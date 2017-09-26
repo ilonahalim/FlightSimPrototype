@@ -4,7 +4,6 @@ import android.content.Context;
 import android.opengl.GLES20;
 import android.opengl.Matrix;
 import android.os.Vibrator;
-import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
 
@@ -98,6 +97,7 @@ public class MainActivity extends GvrActivity implements GvrView.StereoRenderer{
     private float[] modelViewProjection;
     private float[] modelView;
     private float[] modelFloor;
+    private Terrain myTerrain;
 
     private float[] tempPosition;
     private float[] headRotation;
@@ -111,6 +111,8 @@ public class MainActivity extends GvrActivity implements GvrView.StereoRenderer{
     private volatile int sourceId = GvrAudioEngine.INVALID_ID;
     private volatile int successSourceId = GvrAudioEngine.INVALID_ID;
 
+
+    private ShaderLoader myShaderLoader;
     /**
      * Converts a raw text file, saved as a resource, into an OpenGL ES shader.
      *
@@ -119,7 +121,10 @@ public class MainActivity extends GvrActivity implements GvrView.StereoRenderer{
      * @return The shader object handler.
      */
     private int loadGLShader(int type, int resId) {
-        String code = readRawTextFile(resId);
+        //String code = readRawTextFile(resId);
+        //ShaderLoader myShaderLoader = new ShaderLoader();
+        String code = myShaderLoader.readRawTextFile(resId);
+        //String code = myShaderLoader.ReadFile(this, filepath);
         int shader = GLES20.glCreateShader(type);
         GLES20.glShaderSource(shader, code);
         GLES20.glCompileShader(shader);
@@ -163,14 +168,17 @@ public class MainActivity extends GvrActivity implements GvrView.StereoRenderer{
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
+        myShaderLoader = new ShaderLoader();
         initializeGvrView();
-
         modelCube = new float[16];
         camera = new float[16];
         view = new float[16];
         modelViewProjection = new float[16];
         modelView = new float[16];
+
         modelFloor = new float[20];
+        myTerrain = new Terrain();
+
         tempPosition = new float[4];
         // Model first appears directly in front of user.
         modelPosition = new float[] {0.0f, 0.0f, -MAX_MODEL_DISTANCE / 2.0f};
@@ -274,9 +282,9 @@ public class MainActivity extends GvrActivity implements GvrView.StereoRenderer{
         int vertexPointer = 0;
         for(int i=0;i<VERTEX_COUNT;i++){
             for(int j=0;j<VERTEX_COUNT;j++){
-                vertices[vertexPointer*3] = (float)j/((float)VERTEX_COUNT - 1) * SIZE ;
+                vertices[vertexPointer*3] = (float)j/((float)VERTEX_COUNT - 1) * SIZE -200;
                 vertices[vertexPointer*3+1] = 0;
-                vertices[vertexPointer*3+2] = (float)i/((float)VERTEX_COUNT - 1) * SIZE ;
+                vertices[vertexPointer*3+2] = (float)i/((float)VERTEX_COUNT - 1) * SIZE -200;
                 normals[vertexPointer*3] = 0;
                 normals[vertexPointer*3+1] = 1;
                 normals[vertexPointer*3+2] = 0;
@@ -303,41 +311,60 @@ public class MainActivity extends GvrActivity implements GvrView.StereoRenderer{
                 indices[pointer++] = (short) bottomRight;
             }
         }
-
+/*
+        //myTerrain.generateFlatTerrain();
+        floorVertices = myTerrain.getFloorVertices();
+        floorColors = myTerrain.getFloorColors();
+        floorNormals = myTerrain.getFloorNormals();
+        floorIndices = myTerrain.getFloorIndices();
+/*
         //ByteBuffer bbFloorVertices = ByteBuffer.allocateDirect(WorldLayoutData.FLOOR_COORDS.length * 4);
-        ByteBuffer bbFloorVertices = ByteBuffer.allocateDirect(vertices.length * 4);
+        ByteBuffer bbFloorVertices = ByteBuffer.allocateDirect(myTerrain.vertices.length * 4);
+        //ByteBuffer bbFloorVertices = ByteBuffer.allocateDirect(vertices.length * 4);
         bbFloorVertices.order(ByteOrder.nativeOrder());
         floorVertices = bbFloorVertices.asFloatBuffer();
-        floorVertices.put(vertices);
+        floorVertices.put(myTerrain.vertices);
+        //floorVertices.put(vertices);
         floorVertices.position(0);
 
         //ByteBuffer bbFloorNormals = ByteBuffer.allocateDirect(WorldLayoutData.FLOOR_NORMALS.length * 4);
-        ByteBuffer bbFloorNormals = ByteBuffer.allocateDirect(normals.length * 4);
+        ByteBuffer bbFloorNormals = ByteBuffer.allocateDirect(myTerrain.normals.length * 4);
+        //ByteBuffer bbFloorNormals = ByteBuffer.allocateDirect(normals.length * 4);
         bbFloorNormals.order(ByteOrder.nativeOrder());
         floorNormals = bbFloorNormals.asFloatBuffer();
-        floorNormals.put(normals);
+        floorNormals.put(myTerrain.normals);
+        //floorNormals.put(normals);
         floorNormals.position(0);
 
         //ByteBuffer bbFloorColors = ByteBuffer.allocateDirect(WorldLayoutData.FLOOR_COLORS.length * 4);
-        ByteBuffer bbFloorColors = ByteBuffer.allocateDirect(colors.length * 4);
+        ByteBuffer bbFloorColors = ByteBuffer.allocateDirect(myTerrain.colors.length * 4);
+        //ByteBuffer bbFloorColors = ByteBuffer.allocateDirect(colors.length * 4);
         bbFloorColors.order(ByteOrder.nativeOrder());
         floorColors = bbFloorColors.asFloatBuffer();
         //floorColors.put(WorldLayoutData.FLOOR_COLORS);
-        floorColors.put(colors);
+        floorColors.put(myTerrain.colors);
+        //floorColors.put(colors);
         floorColors.position(0);
 
         //ByteBuffer bbFloorColors = ByteBuffer.allocateDirect(WorldLayoutData.FLOOR_COLORS.length * 4);
-        ByteBuffer bbFloorIndices = ByteBuffer.allocateDirect(indices.length * 2);
+        ByteBuffer bbFloorIndices = ByteBuffer.allocateDirect(myTerrain.indices.length * 2);
+        //ByteBuffer bbFloorIndices = ByteBuffer.allocateDirect(indices.length * 2);
         bbFloorIndices.order(ByteOrder.nativeOrder());
         floorIndices = bbFloorIndices.asShortBuffer();
-        floorIndices.put(indices);
+        floorIndices.put(myTerrain.indices);
+        //floorIndices.put(indices);
         floorIndices.position(0);
+*/
 
+        int vertexShader = myShaderLoader.loadGLShader(GLES20.GL_VERTEX_SHADER, R.raw.light_vertex);
+        int gridShader = myShaderLoader.loadGLShader(GLES20.GL_FRAGMENT_SHADER, R.raw.grid_fragment);
+        int passthroughShader = myShaderLoader.loadGLShader(GLES20.GL_FRAGMENT_SHADER, R.raw.passthrough_fragment);
 
+        /*
         int vertexShader = loadGLShader(GLES20.GL_VERTEX_SHADER, R.raw.light_vertex);
         int gridShader = loadGLShader(GLES20.GL_FRAGMENT_SHADER, R.raw.grid_fragment);
         int passthroughShader = loadGLShader(GLES20.GL_FRAGMENT_SHADER, R.raw.passthrough_fragment);
-
+*/
         cubeProgram = GLES20.glCreateProgram();
         GLES20.glAttachShader(cubeProgram, vertexShader);
         GLES20.glAttachShader(cubeProgram, passthroughShader);
@@ -356,7 +383,7 @@ public class MainActivity extends GvrActivity implements GvrView.StereoRenderer{
         cubeLightPosParam = GLES20.glGetUniformLocation(cubeProgram, "u_LightPos");
 
         checkGLError("Cube program params");
-
+/*
         floorProgram = GLES20.glCreateProgram();
         GLES20.glAttachShader(floorProgram, vertexShader);
         GLES20.glAttachShader(floorProgram, gridShader);
@@ -375,10 +402,11 @@ public class MainActivity extends GvrActivity implements GvrView.StereoRenderer{
         floorColorParam = GLES20.glGetAttribLocation(floorProgram, "a_Color");
 
         checkGLError("Floor program params");
-
+*/
         Matrix.setIdentityM(modelFloor, 0);
         Matrix.translateM(modelFloor, 0, 0, -floorDepth, 0); // Floor appears below user.
 
+        myTerrain.generateFlatTerrain(vertexShader, gridShader);
         // Avoid any delays during start-up due to decoding of sound files.
         new Thread(
                 new Runnable() {
@@ -497,7 +525,8 @@ public class MainActivity extends GvrActivity implements GvrView.StereoRenderer{
         // Set modelView for the floor, so we draw floor in the correct location
         Matrix.multiplyMM(modelView, 0, view, 0, modelFloor, 0);
         Matrix.multiplyMM(modelViewProjection, 0, perspective, 0, modelView, 0);
-        drawFloor();
+        //drawFloor();
+        myTerrain.drawFloor(lightPosInEyeSpace, modelView, modelViewProjection);
     }
 
     @Override
@@ -647,4 +676,3 @@ public class MainActivity extends GvrActivity implements GvrView.StereoRenderer{
         return Math.abs(pitch) < PITCH_LIMIT && Math.abs(yaw) < YAW_LIMIT;
     }
 }
-
