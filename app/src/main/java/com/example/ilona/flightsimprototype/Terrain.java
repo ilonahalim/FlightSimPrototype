@@ -1,25 +1,38 @@
 package com.example.ilona.flightsimprototype;
 
 import android.content.Context;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.graphics.drawable.BitmapDrawable;
+import android.media.Image;
+import android.media.ImageReader;
 import android.opengl.GLES20;
+import android.opengl.GLUtils;
 import android.opengl.Matrix;
+import android.widget.ImageView;
 
 import com.google.vr.sdk.base.GvrActivity;
+import com.google.vr.sdk.base.sensors.internal.Vector3d;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
 import java.nio.ShortBuffer;
 import java.util.Random;
+import java.util.Vector;
+
+//import static android.R.attr.x;
+//import static android.R.attr.y;
 
 /**
  * Created by Ilona on 19-Sep-17.
  */
 
 public class Terrain{
-    private int VERTEX_COUNT = 15;
+    private int VERTEX_COUNT = 256;
     private int SIZE = 800;
-
+    private int MAX_HEIGHT = 80;
+    private int MAX_PIXEL_COLOR = 256 * 256 * 256;
 
     private FloatBuffer floorVertices;
     private FloatBuffer floorColors;
@@ -47,30 +60,45 @@ public class Terrain{
     private float floorDepth = 20f;
     private int COORDS_PER_VERTEX = 3;
 
+    private Bitmap bitmap;
+
     public Terrain(){
+        bitmap = BitmapFactory.decodeResource(App.context().getResources(), R.drawable.heightmap);
+        //VERTEX_COUNT = 256;
         modelFloor = new float[20];
        count = VERTEX_COUNT * VERTEX_COUNT;
         vertices = new float[count * 3];
         normals = new float[count * 3];
         colors = new float[count*4];
         indices = new short[6*(VERTEX_COUNT-1)*(VERTEX_COUNT-1)];
+
+        //imageView = new ImageView(App.context());
+        //imageView.setImageResource(App.context().getDrawable(R.drawable.heightmap));
+        //Bitmap bitmap = ((BitmapDrawable)imageView.getDrawable()).getBitmap();
+        //bitmap = BitmapFactory.decodeResource(App.context().getResources(), R.drawable.heightmap);
+        //Bitmap bitmap1 = Bitmap.createBitmap(R.drawable.heightmap, );
+        //int pixel = bitmap.getPixel(bitmap.getWidth(),bitmap.getWidth());
         //generateFlatTerrain();
     }
 
     public void generateFlatTerrain(int vertexShader, int fragmentShader){
         int vertexPointer = 0;
-        int maxY = -20;
-        int minY = -80;
+        //VERTEX_COUNT = bitmap.getHeight();
+        //int maxY = -20;
+        //int minY = -80;
         for(int i=0;i<VERTEX_COUNT;i++){
             for(int j=0;j<VERTEX_COUNT;j++){
-                Random r = new Random();
-                int i1 = r.nextInt(maxY - minY) + minY;
+                //Random r = new Random();
+                //int i1 = r.nextInt(maxY - minY) + minY;
                 vertices[vertexPointer*3] = (float)j/((float)VERTEX_COUNT - 1) * SIZE - 200;
-                vertices[vertexPointer*3+1] = (float)i1;
+                //vertices[vertexPointer*3+1] = (float)i1;
+                vertices[vertexPointer*3+1] = getHeight(j, i);
+                //vertices[vertexPointer*3+1] = (float)0f;
                 vertices[vertexPointer*3+2] = (float)i/((float)VERTEX_COUNT - 1) * SIZE -200;
-                normals[vertexPointer*3] = 0;
-                normals[vertexPointer*3+1] = 1;
-                normals[vertexPointer*3+2] = 0;
+                Vector3d normal = calcNormal(i, j);
+                normals[vertexPointer*3] = (float)normal.x;
+                normals[vertexPointer*3+1] = (float)normal.y;
+                normals[vertexPointer*3+2] = (float)normal.z;
                 colors[vertexPointer*4] = 1.0f;
                 colors[vertexPointer*4+1] = 0.6523f;
                 colors[vertexPointer*4+2] = 0.0f;
@@ -150,6 +178,27 @@ public class Terrain{
 
     }
 
+    private float getHeight(int x, int z){
+        if (x<0 || x>=bitmap.getHeight() || z<0 || z>= bitmap.getWidth()){
+            return 0;
+        }
+        float height = bitmap.getPixel(x, z);
+        height += MAX_PIXEL_COLOR/2f;
+        height /= MAX_PIXEL_COLOR/2f;
+        height *= MAX_HEIGHT;
+        return height;
+    }
+
+    private Vector3d calcNormal(int x, int z){
+        float heightL = getHeight(x-1, z);
+        float heightR = getHeight(x+1, z);
+        float heightD = getHeight(x, z-1);
+        float heightU = getHeight(x, z+1);
+        Vector3d normal = new Vector3d(heightL-heightR, 2f, heightD-heightU);
+        normal.normalize();
+        return normal;
+    }
+
     /**
      * Draw the floor.
      *
@@ -182,6 +231,42 @@ public class Terrain{
         GLES20.glDisableVertexAttribArray(floorColorParam);
 
         //checkGLError("drawing floor");
+    }
+
+    public static int loadTexture(final Context context, final int resourceId)
+    {
+        final int[] textureHandle = new int[1];
+
+        GLES20.glGenTextures(1, textureHandle, 0);
+
+        if (textureHandle[0] != 0)
+        {
+            final BitmapFactory.Options options = new BitmapFactory.Options();
+            options.inScaled = false;   // No pre-scaling
+
+            // Read in the resource
+            final Bitmap bitmap = BitmapFactory.decodeResource(context.getResources(), resourceId, options);
+
+            // Bind to the texture in OpenGL
+            GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, textureHandle[0]);
+
+            // Set filtering
+            GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MIN_FILTER, GLES20.GL_NEAREST);
+            GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MAG_FILTER, GLES20.GL_NEAREST);
+
+            // Load the bitmap into the bound texture.
+            GLUtils.texImage2D(GLES20.GL_TEXTURE_2D, 0, bitmap, 0);
+
+            // Recycle the bitmap, since its data has been loaded into OpenGL.
+            bitmap.recycle();
+        }
+
+        if (textureHandle[0] == 0)
+        {
+            throw new RuntimeException("Error loading texture.");
+        }
+
+        return textureHandle[0];
     }
 
 }
