@@ -30,19 +30,21 @@ import java.util.Vector;
 
 public class Terrain{
     private int VERTEX_COUNT = 256;
-    private int SIZE = 800;
+    private int SIZE = 1800;
     private int MAX_HEIGHT = 80;
     private int MAX_PIXEL_COLOR = 256 * 256 * 256;
 
     private FloatBuffer floorVertices;
     private FloatBuffer floorColors;
     private FloatBuffer floorNormals;
+    private FloatBuffer floorTextureCoords;
     private ShortBuffer floorIndices;
 
     public int count;
     public float[] vertices;
     public float[] normals;
     public float[] colors;
+    public float[] textureCoords;
     public short[] indices;
 
     private int floorProgram;
@@ -50,10 +52,14 @@ public class Terrain{
     private int floorPositionParam;
     private int floorNormalParam;
     private int floorColorParam;
+    private int floorTextureCoordsParam;
     private int floorModelParam;
     private int floorModelViewParam;
     private int floorModelViewProjectionParam;
     private int floorLightPosParam;
+    private int floorTextureParam;
+    private int mTextureDataHandle;
+
 
     private float[] modelFloor;
 
@@ -64,14 +70,15 @@ public class Terrain{
 
     public Terrain(){
         bitmap = BitmapFactory.decodeResource(App.context().getResources(), R.drawable.heightmap);
-        //VERTEX_COUNT = 256;
         modelFloor = new float[20];
        count = VERTEX_COUNT * VERTEX_COUNT;
         vertices = new float[count * 3];
         normals = new float[count * 3];
         colors = new float[count*4];
+        textureCoords = new float[count*2];
         indices = new short[6*(VERTEX_COUNT-1)*(VERTEX_COUNT-1)];
 
+        //loadTexture(R.drawable.grass);
         //imageView = new ImageView(App.context());
         //imageView.setImageResource(App.context().getDrawable(R.drawable.heightmap));
         //Bitmap bitmap = ((BitmapDrawable)imageView.getDrawable()).getBitmap();
@@ -81,7 +88,12 @@ public class Terrain{
         //generateFlatTerrain();
     }
 
-    public void generateFlatTerrain(int vertexShader, int fragmentShader){
+    public void setTexture(int texture){
+        mTextureDataHandle = texture;
+    }
+
+    public void generateFlatTerrain(int vertexShader, int fragmentShader, int texture){
+        mTextureDataHandle = texture;
         int vertexPointer = 0;
         //VERTEX_COUNT = bitmap.getHeight();
         //int maxY = -20;
@@ -103,6 +115,8 @@ public class Terrain{
                 colors[vertexPointer*4+1] = 0.6523f;
                 colors[vertexPointer*4+2] = 0.0f;
                 colors[vertexPointer*4+3] = 1.0f;
+                textureCoords[vertexPointer*2] = (float)j/((float)VERTEX_COUNT - 1);
+                textureCoords[vertexPointer*2+1] = (float)i/((float)VERTEX_COUNT - 1);
                 vertexPointer++;
             }
         }
@@ -130,6 +144,12 @@ public class Terrain{
         floorVertices = bbFloorVertices.asFloatBuffer();
         floorVertices.put(vertices);
         floorVertices.position(0);
+
+        ByteBuffer bbTextureCoords = ByteBuffer.allocateDirect(textureCoords.length * 4);
+        bbTextureCoords.order(ByteOrder.nativeOrder());
+        floorTextureCoords = bbTextureCoords.asFloatBuffer();
+        floorTextureCoords.put(textureCoords);
+        floorTextureCoords.position(0);
 
         //ByteBuffer bbFloorNormals = ByteBuffer.allocateDirect(WorldLayoutData.FLOOR_NORMALS.length * 4);
         ByteBuffer bbFloorNormals = ByteBuffer.allocateDirect(normals.length * 4);
@@ -164,12 +184,14 @@ public class Terrain{
 
         floorModelParam = GLES20.glGetUniformLocation(floorProgram, "u_Model");
         floorModelViewParam = GLES20.glGetUniformLocation(floorProgram, "u_MVMatrix");
-        floorModelViewProjectionParam = GLES20.glGetUniformLocation(floorProgram, "u_MVP");
+        floorModelViewProjectionParam = GLES20.glGetUniformLocation(floorProgram, "u_MVPMatrix");
         floorLightPosParam = GLES20.glGetUniformLocation(floorProgram, "u_LightPos");
+        floorTextureParam = GLES20.glGetUniformLocation(floorProgram, "u_Texture");
 
         floorPositionParam = GLES20.glGetAttribLocation(floorProgram, "a_Position");
         floorNormalParam = GLES20.glGetAttribLocation(floorProgram, "a_Normal");
         floorColorParam = GLES20.glGetAttribLocation(floorProgram, "a_Color");
+        floorTextureCoordsParam = GLES20.glGetAttribLocation(floorProgram, "a_TexCoordinate");
 
         //checkGLError("Floor program params");
 
@@ -207,6 +229,16 @@ public class Terrain{
      * look strange.
      */
     public void drawFloor(float[] lightPosInEyeSpace, float[] modelView, float[] modelViewProjection) {
+        // Set the active texture unit to texture unit 0.
+        GLES20.glActiveTexture(GLES20.GL_TEXTURE0);
+
+        // Bind the texture to this unit.
+        GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, mTextureDataHandle);
+
+        // Tell the texture uniform sampler to use this texture in the shader by binding to texture unit 0.
+        GLES20.glUniform1i(floorTextureParam, 0);
+
+
         GLES20.glUseProgram(floorProgram);
 
         // Set ModelView, MVP, position, normals, and color.
@@ -218,10 +250,12 @@ public class Terrain{
                 floorPositionParam, COORDS_PER_VERTEX, GLES20.GL_FLOAT, false, 0, floorVertices);
         GLES20.glVertexAttribPointer(floorNormalParam, 3, GLES20.GL_FLOAT, false, 0, floorNormals);
         GLES20.glVertexAttribPointer(floorColorParam, 4, GLES20.GL_FLOAT, false, 0, floorColors);
+        GLES20.glVertexAttribPointer(floorTextureCoordsParam, 2, GLES20.GL_FLOAT, false, 0, floorTextureCoords);
 
         GLES20.glEnableVertexAttribArray(floorPositionParam);
         GLES20.glEnableVertexAttribArray(floorNormalParam);
         GLES20.glEnableVertexAttribArray(floorColorParam);
+        GLES20.glEnableVertexAttribArray(floorTextureCoordsParam);
 
         //GLES20.glDrawArrays(GLES20.GL_TRIANGLES, 0, 24);
         GLES20.glDrawElements(GLES20.GL_TRIANGLES, indices.length, GLES20.GL_UNSIGNED_SHORT, floorIndices);
@@ -233,40 +267,6 @@ public class Terrain{
         //checkGLError("drawing floor");
     }
 
-    public static int loadTexture(final Context context, final int resourceId)
-    {
-        final int[] textureHandle = new int[1];
 
-        GLES20.glGenTextures(1, textureHandle, 0);
-
-        if (textureHandle[0] != 0)
-        {
-            final BitmapFactory.Options options = new BitmapFactory.Options();
-            options.inScaled = false;   // No pre-scaling
-
-            // Read in the resource
-            final Bitmap bitmap = BitmapFactory.decodeResource(context.getResources(), resourceId, options);
-
-            // Bind to the texture in OpenGL
-            GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, textureHandle[0]);
-
-            // Set filtering
-            GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MIN_FILTER, GLES20.GL_NEAREST);
-            GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MAG_FILTER, GLES20.GL_NEAREST);
-
-            // Load the bitmap into the bound texture.
-            GLUtils.texImage2D(GLES20.GL_TEXTURE_2D, 0, bitmap, 0);
-
-            // Recycle the bitmap, since its data has been loaded into OpenGL.
-            bitmap.recycle();
-        }
-
-        if (textureHandle[0] == 0)
-        {
-            throw new RuntimeException("Error loading texture.");
-        }
-
-        return textureHandle[0];
-    }
 
 }

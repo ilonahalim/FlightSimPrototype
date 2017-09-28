@@ -1,30 +1,35 @@
-/*
- * Copyright 2017 Google Inc. All Rights Reserved.
-
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *   http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-uniform sampler2D u_Texture;
-
 precision mediump float;
-varying vec4 v_Color;
-varying vec3 v_Grid;
-varying vec2 v_TexCoordinate;
 
-void main() {
-    float depth = gl_FragCoord.z / gl_FragCoord.w; // Calculate world-space distance.
+uniform vec3 u_LightPos;        // The position of the light in eye space.
+uniform sampler2D u_Texture;    // The input texture.
 
-    float diffuse = diffuse * (1.0 / (1.0 + (0.10 * depth)));
+varying vec3 v_Position;        // Interpolated position for this fragment.
+varying vec4 v_Color;           // This is the color from the vertex shader interpolated across the
+                                // triangle per fragment.
+varying vec3 v_Normal;          // Interpolated normal for this fragment.
+varying vec2 v_TexCoordinate;   // Interpolated texture coordinate per fragment.
 
-     diffuse = diffuse + 0.3;
-     gl_FragColor = (v_Color * diffuse * texture2D(u_Texture, v_TexCoordinate));
-}
+// The entry point for our fragment shader.
+void main()
+{
+    // Will be used for attenuation.
+    float distance = length(u_LightPos - v_Position);
+
+    // Get a lighting direction vector from the light to the vertex.
+    vec3 lightVector = normalize(u_LightPos - v_Position);
+
+    // Calculate the dot product of the light vector and vertex normal. If the normal and light vector are
+    // pointing in the same direction then it will get max illumination.
+    float diffuse = max(dot(v_Normal, lightVector), 0.0);
+
+    // Add attenuation.
+    diffuse = diffuse * (1.0 / (1.0 + (0.10 * distance)));
+
+    // Add ambient lighting
+    diffuse = diffuse + 0.3;
+
+    // Multiply the color by the diffuse illumination level and texture value to get final output color.
+    gl_FragColor = (diffuse * texture2D(u_Texture, v_TexCoordinate).rgba);
+    //gl_FragColor = v_Color * diffuse;
+    //gl_FragColor = vec4(v_TexCoordinate, 0.0, 1.0);
+  }

@@ -1,11 +1,15 @@
 package com.example.ilona.flightsimprototype;
 
 import android.content.Context;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.opengl.GLES20;
+import android.opengl.GLUtils;
 import android.opengl.Matrix;
 import android.os.Vibrator;
 import android.os.Bundle;
 import android.util.Log;
+import android.widget.Toast;
 
 import com.google.vr.sdk.audio.GvrAudioEngine;
 import com.google.vr.sdk.base.AndroidCompat;
@@ -14,6 +18,7 @@ import com.google.vr.sdk.base.GvrActivity;
 import com.google.vr.sdk.base.GvrView;
 import com.google.vr.sdk.base.HeadTransform;
 import com.google.vr.sdk.base.Viewport;
+import com.google.vr.sdk.base.sensors.internal.Vector3d;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -26,6 +31,8 @@ import java.nio.ShortBuffer;
 
 import javax.microedition.khronos.egl.EGLConfig;
 
+import static android.opengl.GLES20.glGetError;
+
 public class MainActivity extends GvrActivity implements GvrView.StereoRenderer{
     protected float[] modelCube;
     protected float[] modelPosition;
@@ -36,6 +43,9 @@ public class MainActivity extends GvrActivity implements GvrView.StereoRenderer{
     private static final float Z_FAR = 100.0f;
 
     private static final float CAMERA_Z = 0.501f;
+    private Vector3d cameraCoor;
+    private float[] forwardVec;
+    private float[] transposeMatrix;
     private static final float TIME_DELTA = 0.3f;
 
     private static final float YAW_LIMIT = 0.12f;
@@ -113,39 +123,52 @@ public class MainActivity extends GvrActivity implements GvrView.StereoRenderer{
 
 
     private ShaderLoader myShaderLoader;
-    /**
-     * Converts a raw text file, saved as a resource, into an OpenGL ES shader.
-     *
-     * @param type The type of shader we will be creating.
-     * @param resId The resource ID of the raw text file about to be turned into a shader.
-     * @return The shader object handler.
-     */
-    private int loadGLShader(int type, int resId) {
-        //String code = readRawTextFile(resId);
-        //ShaderLoader myShaderLoader = new ShaderLoader();
-        String code = myShaderLoader.readRawTextFile(resId);
-        //String code = myShaderLoader.ReadFile(this, filepath);
-        int shader = GLES20.glCreateShader(type);
-        GLES20.glShaderSource(shader, code);
-        GLES20.glCompileShader(shader);
 
-        // Get the compilation status.
-        final int[] compileStatus = new int[1];
-        GLES20.glGetShaderiv(shader, GLES20.GL_COMPILE_STATUS, compileStatus, 0);
 
-        // If the compilation failed, delete the shader.
-        if (compileStatus[0] == 0) {
-            Log.e(TAG, "Error compiling shader: " + GLES20.glGetShaderInfoLog(shader));
-            GLES20.glDeleteShader(shader);
-            shader = 0;
+    public static int loadTexture(Context context, int resourceId)
+    {
+        final int[] textureHandle = new int[1];
+        GLES20.glGenTextures(1, textureHandle, 0);
+
+        if (textureHandle[0] != 0)
+        {
+
+            final BitmapFactory.Options options = new BitmapFactory.Options();
+            options.inScaled = false;   // No pre-scaling
+
+            // Read in the resource
+            final Bitmap bitmap = BitmapFactory.decodeResource(context.getResources(), resourceId, options);
+            //Bitmap bitmap = BitmapFactory.decodeResource(App.context().getResources(), R.drawable.grass);
+
+            // Bind to the texture in OpenGL
+            GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, textureHandle[0]);
+
+            // Set filtering
+            GLES20.glTexParameterf(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MIN_FILTER, GLES20.GL_NEAREST);
+            GLES20.glTexParameterf(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MAG_FILTER, GLES20.GL_LINEAR);
+
+            GLES20.glTexParameterf(GLES20.GL_TEXTURE_2D,
+                    GLES20.GL_TEXTURE_WRAP_S, GLES20.GL_CLAMP_TO_EDGE);
+            GLES20.glTexParameterf(GLES20.GL_TEXTURE_2D,
+                    GLES20.GL_TEXTURE_WRAP_T, GLES20.GL_CLAMP_TO_EDGE);
+
+            // Load the bitmap into the bound texture.
+            GLUtils.texImage2D(GLES20.GL_TEXTURE_2D, 0, bitmap, 0);
+            checkGLError("Texture");
+            // Recycle the bitmap, since its data has been loaded into OpenGL.
+            //bitmap.recycle();
         }
 
-        if (shader == 0) {
-            throw new RuntimeException("Error creating shader.");
+        if (textureHandle[0] == 0)
+        {
+            throw new RuntimeException("Error loading texture.");
         }
 
-        return shader;
+        return textureHandle[0];
     }
+
+
+
 
     /**
      * Checks if we've had an error inside of OpenGL ES, and if so what that error is.
@@ -154,7 +177,7 @@ public class MainActivity extends GvrActivity implements GvrView.StereoRenderer{
      */
     private static void checkGLError(String label) {
         int error;
-        while ((error = GLES20.glGetError()) != GLES20.GL_NO_ERROR) {
+        while ((error = glGetError()) != GLES20.GL_NO_ERROR) {
             Log.e(TAG, label + ": glError " + error);
             throw new RuntimeException(label + ": glError " + error);
         }
@@ -185,6 +208,9 @@ public class MainActivity extends GvrActivity implements GvrView.StereoRenderer{
         headRotation = new float[4];
         headView = new float[16];
         vibrator = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
+        cameraCoor = new Vector3d(1.2f, 5f, 0.5f);
+        forwardVec = new float[3];
+        transposeMatrix = new float[16];
 
         // Initialize 3D audio engine.
         gvrAudioEngine = new GvrAudioEngine(this, GvrAudioEngine.RenderingMode.BINAURAL_HIGH_QUALITY);
@@ -274,43 +300,6 @@ public class MainActivity extends GvrActivity implements GvrView.StereoRenderer{
         cubeNormals.position(0);
 
         // make a floor
-        int count = VERTEX_COUNT * VERTEX_COUNT;
-        float[] vertices = new float[count * 3];
-        float[] normals = new float[count * 3];
-        float[] colors = new float[count*4];
-        indices = new short[6*(VERTEX_COUNT-1)*(VERTEX_COUNT-1)];
-        int vertexPointer = 0;
-        for(int i=0;i<VERTEX_COUNT;i++){
-            for(int j=0;j<VERTEX_COUNT;j++){
-                vertices[vertexPointer*3] = (float)j/((float)VERTEX_COUNT - 1) * SIZE -200;
-                vertices[vertexPointer*3+1] = 0;
-                vertices[vertexPointer*3+2] = (float)i/((float)VERTEX_COUNT - 1) * SIZE -200;
-                normals[vertexPointer*3] = 0;
-                normals[vertexPointer*3+1] = 1;
-                normals[vertexPointer*3+2] = 0;
-                colors[vertexPointer*4] = 0.0f;
-                colors[vertexPointer*4+1] = 0.3398f;
-                colors[vertexPointer*4+2] = 0.9023f;
-                colors[vertexPointer*4+3] = 1.0f;
-                vertexPointer++;
-            }
-        }
-
-        int pointer = 0;
-        for(int gz=0;gz<VERTEX_COUNT-1;gz++){
-            for(int gx=0;gx<VERTEX_COUNT-1;gx++){
-                int topLeft = (gz*VERTEX_COUNT)+gx;
-                int topRight = topLeft + 1;
-                int bottomLeft = ((gz+1)*VERTEX_COUNT)+gx;
-                int bottomRight = bottomLeft + 1;
-                indices[pointer++] = (short) topLeft;
-                indices[pointer++] = (short) bottomLeft;
-                indices[pointer++] = (short) topRight;
-                indices[pointer++] = (short) topRight;
-                indices[pointer++] = (short) bottomLeft;
-                indices[pointer++] = (short) bottomRight;
-            }
-        }
 /*
         //myTerrain.generateFlatTerrain();
         floorVertices = myTerrain.getFloorVertices();
@@ -360,6 +349,9 @@ public class MainActivity extends GvrActivity implements GvrView.StereoRenderer{
         int gridShader = myShaderLoader.loadGLShader(GLES20.GL_FRAGMENT_SHADER, R.raw.grid_fragment);
         int passthroughShader = myShaderLoader.loadGLShader(GLES20.GL_FRAGMENT_SHADER, R.raw.passthrough_fragment);
 
+        int terrainVertexShader = myShaderLoader.loadGLShader(GLES20.GL_VERTEX_SHADER, R.raw.terrain_vertex);
+        int terrainFragmentShader = myShaderLoader.loadGLShader(GLES20.GL_FRAGMENT_SHADER, R.raw.terrain_fragment);
+
         /*
         int vertexShader = loadGLShader(GLES20.GL_VERTEX_SHADER, R.raw.light_vertex);
         int gridShader = loadGLShader(GLES20.GL_FRAGMENT_SHADER, R.raw.grid_fragment);
@@ -406,7 +398,8 @@ public class MainActivity extends GvrActivity implements GvrView.StereoRenderer{
         Matrix.setIdentityM(modelFloor, 0);
         Matrix.translateM(modelFloor, 0, 0, -floorDepth, 0); // Floor appears below user.
 
-        myTerrain.generateFlatTerrain(vertexShader, gridShader);
+        //myTerrain.setTexture(loadTexture(this, R.drawable.grass));
+        myTerrain.generateFlatTerrain(terrainVertexShader, terrainFragmentShader, loadTexture(this, R.drawable.grass));
         // Avoid any delays during start-up due to decoding of sound files.
         new Thread(
                 new Runnable() {
@@ -479,7 +472,8 @@ public class MainActivity extends GvrActivity implements GvrView.StereoRenderer{
         setCubeRotation();
 
         // Build the camera matrix and apply it to the ModelView.
-        Matrix.setLookAtM(camera, 0, 0.0f, 0.0f, CAMERA_Z, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f);
+        //Matrix.setLookAtM(camera, 0, 0.0f, 0.0f, CAMERA_Z, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f);
+        //Matrix.setLookAtM(camera, 0, (float) cameraCoor.x, (float) cameraCoor.y, CAMERA_Z, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f);
 
         headTransform.getHeadView(headView, 0);
 
@@ -487,6 +481,20 @@ public class MainActivity extends GvrActivity implements GvrView.StereoRenderer{
         headTransform.getQuaternion(headRotation, 0);
         gvrAudioEngine.setHeadRotation(
                 headRotation[0], headRotation[1], headRotation[2], headRotation[3]);
+        headTransform.getForwardVector(forwardVec, 0);
+        //Vector3d headDir = new Vector3d(headRotation[0], headRotation[1], headRotation[2]);
+        //headDir.normalize();
+        Log.d("NEW FRAME", "x = " + forwardVec[0] + "   y= " + forwardVec[1] + "   z=  " +forwardVec[2]);
+        //Log.d("NEW FRAME", "x             +" + headDir.x);
+        //cameraCoor.x += headDir.x;
+        //cameraCoor.y -= headDir.y;
+        //cameraCoor.y = CAMERA_Z;
+        //cameraCoor.z -= headDir.z;
+        cameraCoor.x += forwardVec[0];
+        cameraCoor.y += forwardVec[1];
+        cameraCoor.z -= forwardVec[2];
+        Matrix.setLookAtM(camera, 0, (float) cameraCoor.x, (float) cameraCoor.y, (float) cameraCoor.z, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f);
+        //Matrix.setLookAtM(camera, 0, (float) headDir.x, (float) headDir.y, (float) headDir.z, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f);
         // Regular update call to GVR audio engine.
         gvrAudioEngine.update();
 
@@ -509,6 +517,10 @@ public class MainActivity extends GvrActivity implements GvrView.StereoRenderer{
 
         checkGLError("colorParam");
 
+        Matrix.transposeM(transposeMatrix, 0, eye.getEyeView(), 0);
+        //forwardVec[0] = transposeMatrix[2];
+        //forwardVec[1] = transposeMatrix[6];
+        //forwardVec[2] = transposeMatrix[10];
         // Apply the eye transformation to the camera.
         Matrix.multiplyMM(view, 0, eye.getEyeView(), 0, camera, 0);
 

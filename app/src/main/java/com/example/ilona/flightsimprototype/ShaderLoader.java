@@ -2,7 +2,10 @@ package com.example.ilona.flightsimprototype;
 
 import android.content.Context;
 import android.content.res.AssetManager;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.opengl.GLES20;
+import android.opengl.GLUtils;
 import android.opengl.Matrix;
 import android.os.Vibrator;
 import android.support.v7.app.AppCompatActivity;
@@ -104,5 +107,8 @@ public class ShaderLoader {
 
         return shader;
     }
+
+
+
 
 }
