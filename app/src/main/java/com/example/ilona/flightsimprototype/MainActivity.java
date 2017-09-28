@@ -211,7 +211,8 @@ public class MainActivity extends GvrActivity implements GvrView.StereoRenderer{
         cameraCoor = new Vector3d(1.2f, 5f, 0.5f);
         forwardVec = new float[3];
         transposeMatrix = new float[16];
-
+        //Matrix.setLookAtM(camera, 0, (float) cameraCoor.x, (float) cameraCoor.y, (float) cameraCoor.z, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f);
+        Matrix.setLookAtM(camera, 0, 0, 0, CAMERA_Z, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f);
         // Initialize 3D audio engine.
         gvrAudioEngine = new GvrAudioEngine(this, GvrAudioEngine.RenderingMode.BINAURAL_HIGH_QUALITY);
     }
@@ -482,6 +483,7 @@ public class MainActivity extends GvrActivity implements GvrView.StereoRenderer{
         gvrAudioEngine.setHeadRotation(
                 headRotation[0], headRotation[1], headRotation[2], headRotation[3]);
         headTransform.getForwardVector(forwardVec, 0);
+        Matrix.translateM(camera, 0, -forwardVec[0], -forwardVec[1], -forwardVec[2]);
         //Vector3d headDir = new Vector3d(headRotation[0], headRotation[1], headRotation[2]);
         //headDir.normalize();
         Log.d("NEW FRAME", "Z = " + cameraCoor.z + "   forward Z=  " +forwardVec[2]);
@@ -490,11 +492,11 @@ public class MainActivity extends GvrActivity implements GvrView.StereoRenderer{
         //cameraCoor.y -= headDir.y;
         //cameraCoor.y = CAMERA_Z;
         //cameraCoor.z -= headDir.z;
-        cameraCoor.x += forwardVec[0];
-        cameraCoor.y += forwardVec[1];
-        cameraCoor.z -= forwardVec[2];
-        Matrix.setLookAtM(camera, 0, (float) cameraCoor.x, (float) cameraCoor.y, (float) cameraCoor.z, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f);
-        //Matrix.setLookAtM(camera, 0, (float) headDir.x, (float) headDir.y, (float) headDir.z, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f);
+        //cameraCoor.x += forwardVec[0];
+        //cameraCoor.y += forwardVec[1];
+        //cameraCoor.z -= forwardVec[2];
+        //Matrix.setLookAtM(camera, 0, (float) cameraCoor.x, (float) cameraCoor.y, (float) cameraCoor.z, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f);
+        //Matrix.setLookAtM(camera, 0, camera[2] + forwardVec[0], camera[6] + forwardVec[1], camera[10] + forwardVec[2], 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f);
         // Regular update call to GVR audio engine.
         gvrAudioEngine.update();
 
@@ -519,9 +521,9 @@ public class MainActivity extends GvrActivity implements GvrView.StereoRenderer{
 
         if (eye.getType() == Eye.Type.LEFT) {
             Matrix.transposeM(transposeMatrix, 0, eye.getEyeView(), 0);
-            forwardVec[0] = transposeMatrix[3];
-            forwardVec[1] = transposeMatrix[7];
-            forwardVec[2] = transposeMatrix[11];
+            forwardVec[0] = transposeMatrix[2];
+            forwardVec[1] = transposeMatrix[6];
+            forwardVec[2] = transposeMatrix[10];
         }
         // Apply the eye transformation to the camera.
         Matrix.multiplyMM(view, 0, eye.getEyeView(), 0, camera, 0);
