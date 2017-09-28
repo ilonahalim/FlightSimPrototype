@@ -484,7 +484,7 @@ public class MainActivity extends GvrActivity implements GvrView.StereoRenderer{
         headTransform.getForwardVector(forwardVec, 0);
         //Vector3d headDir = new Vector3d(headRotation[0], headRotation[1], headRotation[2]);
         //headDir.normalize();
-        Log.d("NEW FRAME", "x = " + forwardVec[0] + "   y= " + forwardVec[1] + "   z=  " +forwardVec[2]);
+        Log.d("NEW FRAME", "Z = " + cameraCoor.z + "   forward Z=  " +forwardVec[2]);
         //Log.d("NEW FRAME", "x             +" + headDir.x);
         //cameraCoor.x += headDir.x;
         //cameraCoor.y -= headDir.y;
@@ -493,7 +493,7 @@ public class MainActivity extends GvrActivity implements GvrView.StereoRenderer{
         cameraCoor.x += forwardVec[0];
         cameraCoor.y += forwardVec[1];
         cameraCoor.z -= forwardVec[2];
-        //Matrix.setLookAtM(camera, 0, (float) cameraCoor.x, (float) cameraCoor.y, (float) cameraCoor.z, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f);
+        Matrix.setLookAtM(camera, 0, (float) cameraCoor.x, (float) cameraCoor.y, (float) cameraCoor.z, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f);
         //Matrix.setLookAtM(camera, 0, (float) headDir.x, (float) headDir.y, (float) headDir.z, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f);
         // Regular update call to GVR audio engine.
         gvrAudioEngine.update();
@@ -517,10 +517,12 @@ public class MainActivity extends GvrActivity implements GvrView.StereoRenderer{
 
         checkGLError("colorParam");
 
-        Matrix.transposeM(transposeMatrix, 0, eye.getEyeView(), 0);
-        //forwardVec[0] = transposeMatrix[2];
-        //forwardVec[1] = transposeMatrix[6];
-        //forwardVec[2] = transposeMatrix[10];
+        if (eye.getType() == Eye.Type.LEFT) {
+            Matrix.transposeM(transposeMatrix, 0, eye.getEyeView(), 0);
+            forwardVec[0] = transposeMatrix[3];
+            forwardVec[1] = transposeMatrix[7];
+            forwardVec[2] = transposeMatrix[11];
+        }
         // Apply the eye transformation to the camera.
         Matrix.multiplyMM(view, 0, eye.getEyeView(), 0, camera, 0);
 
