@@ -493,7 +493,7 @@ public class MainActivity extends GvrActivity implements GvrView.StereoRenderer{
         cameraCoor.x += forwardVec[0];
         cameraCoor.y += forwardVec[1];
         cameraCoor.z -= forwardVec[2];
-        Matrix.setLookAtM(camera, 0, (float) cameraCoor.x, (float) cameraCoor.y, (float) cameraCoor.z, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f);
+        //Matrix.setLookAtM(camera, 0, (float) cameraCoor.x, (float) cameraCoor.y, (float) cameraCoor.z, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f);
         //Matrix.setLookAtM(camera, 0, (float) headDir.x, (float) headDir.y, (float) headDir.z, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f);
         // Regular update call to GVR audio engine.
         gvrAudioEngine.update();

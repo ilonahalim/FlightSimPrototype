@@ -229,6 +229,8 @@ public class Terrain{
      * look strange.
      */
     public void drawFloor(float[] lightPosInEyeSpace, float[] modelView, float[] modelViewProjection) {
+        GLES20.glUseProgram(floorProgram);
+
         // Set the active texture unit to texture unit 0.
         GLES20.glActiveTexture(GLES20.GL_TEXTURE0);
 
@@ -239,7 +241,7 @@ public class Terrain{
         GLES20.glUniform1i(floorTextureParam, 0);
 
 
-        GLES20.glUseProgram(floorProgram);
+
 
         // Set ModelView, MVP, position, normals, and color.
         GLES20.glUniform3fv(floorLightPosParam, 1, lightPosInEyeSpace, 0);
