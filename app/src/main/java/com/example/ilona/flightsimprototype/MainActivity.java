@@ -3,7 +3,9 @@ package com.example.ilona.flightsimprototype;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.opengl.GLES11;
 import android.opengl.GLES20;
+import android.opengl.GLES30;
 import android.opengl.GLUtils;
 import android.opengl.Matrix;
 import android.os.Vibrator;
@@ -37,7 +39,7 @@ public class MainActivity extends GvrActivity implements GvrView.StereoRenderer{
     protected float[] modelCube;
     protected float[] modelPosition;
 
-    private static final String TAG = "TreasureHuntActivity";
+    private static final String TAG = "MainActivity";
 
     private static final float Z_NEAR = 0.1f;
     private static final float Z_FAR = 100.0f;
@@ -67,14 +69,6 @@ public class MainActivity extends GvrActivity implements GvrView.StereoRenderer{
 
     private final float[] lightPosInEyeSpace = new float[4];
 
-    private int VERTEX_COUNT = 9;
-    private int SIZE = 800;
-
-    private FloatBuffer floorVertices;
-    private FloatBuffer floorColors;
-    private FloatBuffer floorNormals;
-    private ShortBuffer floorIndices;
-
     short[] indices;
 
     private FloatBuffer cubeVertices;
@@ -83,7 +77,6 @@ public class MainActivity extends GvrActivity implements GvrView.StereoRenderer{
     private FloatBuffer cubeNormals;
 
     private int cubeProgram;
-    private int floorProgram;
 
     private int cubePositionParam;
     private int cubeNormalParam;
@@ -93,21 +86,15 @@ public class MainActivity extends GvrActivity implements GvrView.StereoRenderer{
     private int cubeModelViewProjectionParam;
     private int cubeLightPosParam;
 
-    private int floorPositionParam;
-    private int floorNormalParam;
-    private int floorColorParam;
-    private int floorModelParam;
-    private int floorModelViewParam;
-    private int floorModelViewProjectionParam;
-    private int floorLightPosParam;
-
     private float[] camera;
     private float[] view;
     private float[] headView;
     private float[] modelViewProjection;
     private float[] modelView;
     private float[] modelFloor;
+    protected float[] modelSkybox;
     private Terrain myTerrain;
+    private SkyBox mySkybox;
 
     private float[] tempPosition;
     private float[] headRotation;
@@ -148,15 +135,15 @@ public class MainActivity extends GvrActivity implements GvrView.StereoRenderer{
             GLES20.glTexParameterf(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MAG_FILTER, GLES20.GL_LINEAR);
 
             GLES20.glTexParameterf(GLES20.GL_TEXTURE_2D,
-                    GLES20.GL_TEXTURE_WRAP_S, GLES20.GL_CLAMP_TO_EDGE);
+                    GLES20.GL_TEXTURE_WRAP_S, GLES20.GL_MIRRORED_REPEAT);
             GLES20.glTexParameterf(GLES20.GL_TEXTURE_2D,
-                    GLES20.GL_TEXTURE_WRAP_T, GLES20.GL_CLAMP_TO_EDGE);
+                    GLES20.GL_TEXTURE_WRAP_T, GLES20.GL_MIRRORED_REPEAT);
 
             // Load the bitmap into the bound texture.
             GLUtils.texImage2D(GLES20.GL_TEXTURE_2D, 0, bitmap, 0);
             checkGLError("Texture");
             // Recycle the bitmap, since its data has been loaded into OpenGL.
-            //bitmap.recycle();
+            bitmap.recycle();
         }
 
         if (textureHandle[0] == 0)
@@ -167,6 +154,46 @@ public class MainActivity extends GvrActivity implements GvrView.StereoRenderer{
         return textureHandle[0];
     }
 
+    public static int loadCubeTexture(Context context, int[] resourceIdArray)
+    {
+        final int[] textureHandle = new int[1];
+        GLES20.glGenTextures(1, textureHandle, 0);
+
+        if (textureHandle[0] != 0)
+        {
+            // Bind to the texture in OpenGL
+            GLES20.glBindTexture(GLES20.GL_TEXTURE_CUBE_MAP, textureHandle[0]);
+
+            GLES20.glTexParameteri(GLES20.GL_TEXTURE_CUBE_MAP, GLES20.GL_TEXTURE_MIN_FILTER, GLES20.GL_LINEAR);
+            GLES20.glTexParameteri(GLES20.GL_TEXTURE_CUBE_MAP, GLES20.GL_TEXTURE_MAG_FILTER, GLES20.GL_LINEAR);
+
+            GLES20.glTexParameteri(GLES20.GL_TEXTURE_CUBE_MAP, GLES20.GL_TEXTURE_WRAP_S, GLES20.GL_CLAMP_TO_EDGE);
+            GLES20.glTexParameteri(GLES20.GL_TEXTURE_CUBE_MAP, GLES20.GL_TEXTURE_WRAP_T, GLES20.GL_CLAMP_TO_EDGE);
+            GLES20.glTexParameteri(GLES20.GL_TEXTURE_CUBE_MAP, GLES30.GL_TEXTURE_WRAP_R, GLES20.GL_CLAMP_TO_EDGE);
+
+
+            for(int i = 0; i<6;i++) {
+                BitmapFactory.Options options = new BitmapFactory.Options();
+                options.inScaled = false;   // No pre-scaling
+
+                // Read in the resource
+                Bitmap bitmap = BitmapFactory.decodeResource(context.getResources(), resourceIdArray[i], options);
+
+                // Load the bitmap into the bound texture.
+                GLUtils.texImage2D(GLES20.GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, bitmap, 0);
+                checkGLError("Texture");
+                // Recycle the bitmap, since its data has been loaded into OpenGL.
+                bitmap.recycle();
+            }
+        }
+
+        if (textureHandle[0] == 0)
+        {
+            throw new RuntimeException("Error loading texture.");
+        }
+
+        return textureHandle[0];
+    }
 
 
 
@@ -201,6 +228,9 @@ public class MainActivity extends GvrActivity implements GvrView.StereoRenderer{
 
         modelFloor = new float[20];
         myTerrain = new Terrain();
+
+        modelSkybox = new float[16];
+        mySkybox = new SkyBox();
 
         tempPosition = new float[4];
         // Model first appears directly in front of user.
@@ -300,51 +330,6 @@ public class MainActivity extends GvrActivity implements GvrView.StereoRenderer{
         cubeNormals.put(WorldLayoutData.CUBE_NORMALS);
         cubeNormals.position(0);
 
-        // make a floor
-/*
-        //myTerrain.generateFlatTerrain();
-        floorVertices = myTerrain.getFloorVertices();
-        floorColors = myTerrain.getFloorColors();
-        floorNormals = myTerrain.getFloorNormals();
-        floorIndices = myTerrain.getFloorIndices();
-/*
-        //ByteBuffer bbFloorVertices = ByteBuffer.allocateDirect(WorldLayoutData.FLOOR_COORDS.length * 4);
-        ByteBuffer bbFloorVertices = ByteBuffer.allocateDirect(myTerrain.vertices.length * 4);
-        //ByteBuffer bbFloorVertices = ByteBuffer.allocateDirect(vertices.length * 4);
-        bbFloorVertices.order(ByteOrder.nativeOrder());
-        floorVertices = bbFloorVertices.asFloatBuffer();
-        floorVertices.put(myTerrain.vertices);
-        //floorVertices.put(vertices);
-        floorVertices.position(0);
-
-        //ByteBuffer bbFloorNormals = ByteBuffer.allocateDirect(WorldLayoutData.FLOOR_NORMALS.length * 4);
-        ByteBuffer bbFloorNormals = ByteBuffer.allocateDirect(myTerrain.normals.length * 4);
-        //ByteBuffer bbFloorNormals = ByteBuffer.allocateDirect(normals.length * 4);
-        bbFloorNormals.order(ByteOrder.nativeOrder());
-        floorNormals = bbFloorNormals.asFloatBuffer();
-        floorNormals.put(myTerrain.normals);
-        //floorNormals.put(normals);
-        floorNormals.position(0);
-
-        //ByteBuffer bbFloorColors = ByteBuffer.allocateDirect(WorldLayoutData.FLOOR_COLORS.length * 4);
-        ByteBuffer bbFloorColors = ByteBuffer.allocateDirect(myTerrain.colors.length * 4);
-        //ByteBuffer bbFloorColors = ByteBuffer.allocateDirect(colors.length * 4);
-        bbFloorColors.order(ByteOrder.nativeOrder());
-        floorColors = bbFloorColors.asFloatBuffer();
-        //floorColors.put(WorldLayoutData.FLOOR_COLORS);
-        floorColors.put(myTerrain.colors);
-        //floorColors.put(colors);
-        floorColors.position(0);
-
-        //ByteBuffer bbFloorColors = ByteBuffer.allocateDirect(WorldLayoutData.FLOOR_COLORS.length * 4);
-        ByteBuffer bbFloorIndices = ByteBuffer.allocateDirect(myTerrain.indices.length * 2);
-        //ByteBuffer bbFloorIndices = ByteBuffer.allocateDirect(indices.length * 2);
-        bbFloorIndices.order(ByteOrder.nativeOrder());
-        floorIndices = bbFloorIndices.asShortBuffer();
-        floorIndices.put(myTerrain.indices);
-        //floorIndices.put(indices);
-        floorIndices.position(0);
-*/
 
         int vertexShader = myShaderLoader.loadGLShader(GLES20.GL_VERTEX_SHADER, R.raw.light_vertex);
         int gridShader = myShaderLoader.loadGLShader(GLES20.GL_FRAGMENT_SHADER, R.raw.grid_fragment);
@@ -353,11 +338,34 @@ public class MainActivity extends GvrActivity implements GvrView.StereoRenderer{
         int terrainVertexShader = myShaderLoader.loadGLShader(GLES20.GL_VERTEX_SHADER, R.raw.terrain_vertex);
         int terrainFragmentShader = myShaderLoader.loadGLShader(GLES20.GL_FRAGMENT_SHADER, R.raw.terrain_fragment);
 
+        int skyVertexShader = myShaderLoader.loadGLShader(GLES20.GL_VERTEX_SHADER, R.raw.skybox_vertex);
+        int skyFragmentShader = myShaderLoader.loadGLShader(GLES20.GL_FRAGMENT_SHADER, R.raw.skybox_fragment);
         /*
         int vertexShader = loadGLShader(GLES20.GL_VERTEX_SHADER, R.raw.light_vertex);
         int gridShader = loadGLShader(GLES20.GL_FRAGMENT_SHADER, R.raw.grid_fragment);
         int passthroughShader = loadGLShader(GLES20.GL_FRAGMENT_SHADER, R.raw.passthrough_fragment);
 */
+        /*
+        cubeProgram = GLES20.glCreateProgram();
+        GLES20.glAttachShader(cubeProgram, skyVertexShader);
+        GLES20.glAttachShader(cubeProgram, skyFragmentShader);
+        GLES20.glLinkProgram(cubeProgram);
+        GLES20.glUseProgram(cubeProgram);
+
+        checkGLError("Cube program");
+
+        cubePositionParam = GLES20.glGetAttribLocation(cubeProgram, "a_Position");
+        //cubeNormalParam = GLES20.glGetAttribLocation(cubeProgram, "a_Normal");
+        //cubeColorParam = GLES20.glGetAttribLocation(cubeProgram, "a_Color");
+
+        //cubeModelParam = GLES20.glGetUniformLocation(cubeProgram, "u_Model");
+        //cubeModelViewParam = GLES20.glGetUniformLocation(cubeProgram, "u_MVMatrix");
+        cubeModelViewProjectionParam = GLES20.glGetUniformLocation(cubeProgram, "u_MVP");
+        //cubeLightPosParam = GLES20.glGetUniformLocation(cubeProgram, "u_LightPos");
+
+        checkGLError("Cube program params");
+        */
+
         cubeProgram = GLES20.glCreateProgram();
         GLES20.glAttachShader(cubeProgram, vertexShader);
         GLES20.glAttachShader(cubeProgram, passthroughShader);
@@ -376,6 +384,7 @@ public class MainActivity extends GvrActivity implements GvrView.StereoRenderer{
         cubeLightPosParam = GLES20.glGetUniformLocation(cubeProgram, "u_LightPos");
 
         checkGLError("Cube program params");
+
 /*
         floorProgram = GLES20.glCreateProgram();
         GLES20.glAttachShader(floorProgram, vertexShader);
@@ -399,8 +408,22 @@ public class MainActivity extends GvrActivity implements GvrView.StereoRenderer{
         Matrix.setIdentityM(modelFloor, 0);
         Matrix.translateM(modelFloor, 0, 0, -floorDepth, 0); // Floor appears below user.
 
+        int[] skyResources = new int[6];
+        skyResources[0] = R.drawable.right;
+        skyResources[1] = R.drawable.left;
+        skyResources[2] = R.drawable.top;
+        skyResources[3] = R.drawable.bottom;
+        skyResources[4] = R.drawable.back;
+        skyResources[5] = R.drawable.front;
+        mySkybox.setUpOpenGl(skyVertexShader, skyFragmentShader, loadCubeTexture(App.context(), skyResources));
+        Matrix.setIdentityM(modelSkybox, 0);
+        Matrix.translateM(modelSkybox, 0, modelPosition[0], modelPosition[1], modelPosition[2]);
+
         //myTerrain.setTexture(loadTexture(this, R.drawable.grass));
         myTerrain.generateFlatTerrain(terrainVertexShader, terrainFragmentShader, loadTexture(this, R.drawable.grass));
+
+
+
         // Avoid any delays during start-up due to decoding of sound files.
         new Thread(
                 new Runnable() {
@@ -470,7 +493,7 @@ public class MainActivity extends GvrActivity implements GvrView.StereoRenderer{
      */
     @Override
     public void onNewFrame(HeadTransform headTransform) {
-        setCubeRotation();
+        //setCubeRotation();
 
         // Build the camera matrix and apply it to the ModelView.
         //Matrix.setLookAtM(camera, 0, 0.0f, 0.0f, CAMERA_Z, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f);
@@ -482,21 +505,15 @@ public class MainActivity extends GvrActivity implements GvrView.StereoRenderer{
         headTransform.getQuaternion(headRotation, 0);
         gvrAudioEngine.setHeadRotation(
                 headRotation[0], headRotation[1], headRotation[2], headRotation[3]);
-        headTransform.getForwardVector(forwardVec, 0);
-        Matrix.translateM(camera, 0, -forwardVec[0], -forwardVec[1], -forwardVec[2]);
-        //Vector3d headDir = new Vector3d(headRotation[0], headRotation[1], headRotation[2]);
-        //headDir.normalize();
-        Log.d("NEW FRAME", "Z = " + cameraCoor.z + "   forward Z=  " +forwardVec[2]);
-        //Log.d("NEW FRAME", "x             +" + headDir.x);
-        //cameraCoor.x += headDir.x;
-        //cameraCoor.y -= headDir.y;
-        //cameraCoor.y = CAMERA_Z;
-        //cameraCoor.z -= headDir.z;
-        //cameraCoor.x += forwardVec[0];
-        //cameraCoor.y += forwardVec[1];
-        //cameraCoor.z -= forwardVec[2];
-        //Matrix.setLookAtM(camera, 0, (float) cameraCoor.x, (float) cameraCoor.y, (float) cameraCoor.z, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f);
-        //Matrix.setLookAtM(camera, 0, camera[2] + forwardVec[0], camera[6] + forwardVec[1], camera[10] + forwardVec[2], 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f);
+        if(!isCrashLanding()){
+            headTransform.getForwardVector(forwardVec, 0);
+            Matrix.translateM(camera, 0, -forwardVec[0], -forwardVec[1], -forwardVec[2]);
+            Matrix.translateM(modelSkybox, 0, forwardVec[0], forwardVec[1], forwardVec[2]);
+        }
+        //Matrix.setIdentityM(modelSkybox, 0);
+        //Matrix.translateM(modelSkybox, 0, -forwardVec[0], -forwardVec[1], -forwardVec[2]);
+
+        //Log.d("NEW FRAME", "Z = " + cameraCoor.z + "   forward Z=  " +forwardVec[2]);
         // Regular update call to GVR audio engine.
         gvrAudioEngine.update();
 
@@ -519,12 +536,6 @@ public class MainActivity extends GvrActivity implements GvrView.StereoRenderer{
 
         checkGLError("colorParam");
 
-        if (eye.getType() == Eye.Type.LEFT) {
-            Matrix.transposeM(transposeMatrix, 0, eye.getEyeView(), 0);
-            forwardVec[0] = transposeMatrix[2];
-            forwardVec[1] = transposeMatrix[6];
-            forwardVec[2] = transposeMatrix[10];
-        }
         // Apply the eye transformation to the camera.
         Matrix.multiplyMM(view, 0, eye.getEyeView(), 0, camera, 0);
 
@@ -537,12 +548,18 @@ public class MainActivity extends GvrActivity implements GvrView.StereoRenderer{
         Matrix.multiplyMM(modelView, 0, view, 0, modelCube, 0);
         Matrix.multiplyMM(modelViewProjection, 0, perspective, 0, modelView, 0);
         drawCube();
+        //mySkybox.drawSkybox(modelViewProjection);
+
+        Matrix.multiplyMM(modelView, 0, view, 0, modelSkybox, 0);
+        Matrix.multiplyMM(modelViewProjection, 0, perspective, 0, modelView, 0);
+        mySkybox.drawSkybox(modelViewProjection);
 
         // Set modelView for the floor, so we draw floor in the correct location
         Matrix.multiplyMM(modelView, 0, view, 0, modelFloor, 0);
         Matrix.multiplyMM(modelViewProjection, 0, perspective, 0, modelView, 0);
-        //drawFloor();
         myTerrain.drawFloor(lightPosInEyeSpace, modelView, modelViewProjection);
+
+
     }
 
     @Override
@@ -593,39 +610,6 @@ public class MainActivity extends GvrActivity implements GvrView.StereoRenderer{
 
     }
 
-    /**
-     * Draw the floor.
-     *
-     * <p>This feeds in data for the floor into the shader. Note that this doesn't feed in data about
-     * position of the light, so if we rewrite our code to draw the floor first, the lighting might
-     * look strange.
-     */
-    public void drawFloor() {
-        GLES20.glUseProgram(floorProgram);
-
-        // Set ModelView, MVP, position, normals, and color.
-        GLES20.glUniform3fv(floorLightPosParam, 1, lightPosInEyeSpace, 0);
-        GLES20.glUniformMatrix4fv(floorModelParam, 1, false, modelFloor, 0);
-        GLES20.glUniformMatrix4fv(floorModelViewParam, 1, false, modelView, 0);
-        GLES20.glUniformMatrix4fv(floorModelViewProjectionParam, 1, false, modelViewProjection, 0);
-        GLES20.glVertexAttribPointer(
-                floorPositionParam, COORDS_PER_VERTEX, GLES20.GL_FLOAT, false, 0, floorVertices);
-        GLES20.glVertexAttribPointer(floorNormalParam, 3, GLES20.GL_FLOAT, false, 0, floorNormals);
-        GLES20.glVertexAttribPointer(floorColorParam, 4, GLES20.GL_FLOAT, false, 0, floorColors);
-
-        GLES20.glEnableVertexAttribArray(floorPositionParam);
-        GLES20.glEnableVertexAttribArray(floorNormalParam);
-        GLES20.glEnableVertexAttribArray(floorColorParam);
-
-        //GLES20.glDrawArrays(GLES20.GL_TRIANGLES, 0, 24);
-        GLES20.glDrawElements(GLES20.GL_TRIANGLES, indices.length, GLES20.GL_UNSIGNED_SHORT, floorIndices);
-
-        GLES20.glDisableVertexAttribArray(floorPositionParam);
-        GLES20.glDisableVertexAttribArray(floorNormalParam);
-        GLES20.glDisableVertexAttribArray(floorColorParam);
-
-        checkGLError("drawing floor");
-    }
 
     /**
      * Called when the Cardboard trigger is pulled.
@@ -690,5 +674,16 @@ public class MainActivity extends GvrActivity implements GvrView.StereoRenderer{
         float yaw = (float) Math.atan2(tempPosition[0], -tempPosition[2]);
 
         return Math.abs(pitch) < PITCH_LIMIT && Math.abs(yaw) < YAW_LIMIT;
+    }
+    private boolean isCrashLanding() {
+        // Convert object space to camera space. Use the headView from onNewFrame.
+
+        Matrix.multiplyMM(modelView, 0, headView, 0, modelFloor, 0);
+        Matrix.multiplyMV(tempPosition, 0, modelView, 0, POS_MATRIX_MULTIPLY_VEC, 0);
+
+        float pitch = (float) Math.atan2(tempPosition[1], -tempPosition[2]);
+        float yaw = (float) Math.atan2(tempPosition[0], -tempPosition[2]);
+        Log.d("CHECK CRASH", "pitch = " + pitch + "   yaw=  " +yaw);
+        return Math.abs(pitch) < 0 && Math.abs(yaw) < 0;
     }
 }

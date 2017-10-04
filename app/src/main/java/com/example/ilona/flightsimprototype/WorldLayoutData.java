@@ -5,6 +5,50 @@ package com.example.ilona.flightsimprototype;
  */
 
 public final class WorldLayoutData {
+    private static final float SIZE = 50f;
+    public static final float[] CUBE_COORDS_2 = {
+            -SIZE,  SIZE, -SIZE,
+            -SIZE, -SIZE, -SIZE,
+            SIZE, -SIZE, -SIZE,
+            SIZE, -SIZE, -SIZE,
+            SIZE,  SIZE, -SIZE,
+            -SIZE,  SIZE, -SIZE,
+
+            -SIZE, -SIZE,  SIZE,
+            -SIZE, -SIZE, -SIZE,
+            -SIZE,  SIZE, -SIZE,
+            -SIZE,  SIZE, -SIZE,
+            -SIZE,  SIZE,  SIZE,
+            -SIZE, -SIZE,  SIZE,
+
+            SIZE, -SIZE, -SIZE,
+            SIZE, -SIZE,  SIZE,
+            SIZE,  SIZE,  SIZE,
+            SIZE,  SIZE,  SIZE,
+            SIZE,  SIZE, -SIZE,
+            SIZE, -SIZE, -SIZE,
+
+            -SIZE, -SIZE,  SIZE,
+            -SIZE,  SIZE,  SIZE,
+            SIZE,  SIZE,  SIZE,
+            SIZE,  SIZE,  SIZE,
+            SIZE, -SIZE,  SIZE,
+            -SIZE, -SIZE,  SIZE,
+
+            -SIZE,  SIZE, -SIZE,
+            SIZE,  SIZE, -SIZE,
+            SIZE,  SIZE,  SIZE,
+            SIZE,  SIZE,  SIZE,
+            -SIZE,  SIZE,  SIZE,
+            -SIZE,  SIZE, -SIZE,
+
+            -SIZE, -SIZE, -SIZE,
+            -SIZE, -SIZE,  SIZE,
+            SIZE, -SIZE, -SIZE,
+            SIZE, -SIZE, -SIZE,
+            -SIZE, -SIZE,  SIZE,
+            SIZE, -SIZE,  SIZE
+    };
 
     public static final float[] CUBE_COORDS = new float[] {
             // Front face

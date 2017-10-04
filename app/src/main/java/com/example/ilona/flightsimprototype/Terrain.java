@@ -100,12 +100,8 @@ public class Terrain{
         //int minY = -80;
         for(int i=0;i<VERTEX_COUNT;i++){
             for(int j=0;j<VERTEX_COUNT;j++){
-                //Random r = new Random();
-                //int i1 = r.nextInt(maxY - minY) + minY;
                 vertices[vertexPointer*3] = (float)j/((float)VERTEX_COUNT - 1) * SIZE - 200;
-                //vertices[vertexPointer*3+1] = (float)i1;
                 vertices[vertexPointer*3+1] = getHeight(j, i);
-                //vertices[vertexPointer*3+1] = (float)0f;
                 vertices[vertexPointer*3+2] = (float)i/((float)VERTEX_COUNT - 1) * SIZE -200;
                 Vector3d normal = calcNormal(i, j);
                 normals[vertexPointer*3] = (float)normal.x;
@@ -239,9 +235,6 @@ public class Terrain{
 
         // Tell the texture uniform sampler to use this texture in the shader by binding to texture unit 0.
         GLES20.glUniform1i(floorTextureParam, 0);
-
-
-
 
         // Set ModelView, MVP, position, normals, and color.
         GLES20.glUniform3fv(floorLightPosParam, 1, lightPosInEyeSpace, 0);
