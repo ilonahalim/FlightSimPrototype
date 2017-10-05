@@ -52,6 +52,9 @@ public class MainActivity extends GvrActivity implements GvrView.StereoRenderer{
 
     private static final float YAW_LIMIT = 0.12f;
     private static final float PITCH_LIMIT = 0.12f;
+    private static final float MIN_ALTITUDE = 0.0f;
+
+    private float altitude;
 
     private static final int COORDS_PER_VERTEX = 3;
 
@@ -225,6 +228,7 @@ public class MainActivity extends GvrActivity implements GvrView.StereoRenderer{
         view = new float[16];
         modelViewProjection = new float[16];
         modelView = new float[16];
+        altitude = 0.0f;
 
         modelFloor = new float[20];
         myTerrain = new Terrain();
@@ -505,13 +509,17 @@ public class MainActivity extends GvrActivity implements GvrView.StereoRenderer{
         headTransform.getQuaternion(headRotation, 0);
         gvrAudioEngine.setHeadRotation(
                 headRotation[0], headRotation[1], headRotation[2], headRotation[3]);
-        if(!isCrashLanding()){
+        Log.d("ALTITUDE", "altitude = " + altitude + "   forward vec=  " +forwardVec[1]);
+        if(isCrashLanding(altitude + forwardVec[1])){
+            resetPosition();
+        }
+        //if(!isCrashLanding(altitude + forwardVec[1])){
             headTransform.getForwardVector(forwardVec, 0);
             Matrix.translateM(camera, 0, -forwardVec[0], -forwardVec[1], -forwardVec[2]);
             Matrix.translateM(modelSkybox, 0, forwardVec[0], forwardVec[1], forwardVec[2]);
-        }
-        //Matrix.setIdentityM(modelSkybox, 0);
-        //Matrix.translateM(modelSkybox, 0, -forwardVec[0], -forwardVec[1], -forwardVec[2]);
+            Matrix.translateM(modelCube, 0, forwardVec[0], forwardVec[1], forwardVec[2]);
+            altitude += forwardVec[1];
+        //}
 
         //Log.d("NEW FRAME", "Z = " + cameraCoor.z + "   forward Z=  " +forwardVec[2]);
         // Regular update call to GVR audio engine.
@@ -675,15 +683,16 @@ public class MainActivity extends GvrActivity implements GvrView.StereoRenderer{
 
         return Math.abs(pitch) < PITCH_LIMIT && Math.abs(yaw) < YAW_LIMIT;
     }
-    private boolean isCrashLanding() {
-        // Convert object space to camera space. Use the headView from onNewFrame.
+    private boolean isCrashLanding(float tempAlt) {
+        return tempAlt < MIN_ALTITUDE;
+    }
 
-        Matrix.multiplyMM(modelView, 0, headView, 0, modelFloor, 0);
-        Matrix.multiplyMV(tempPosition, 0, modelView, 0, POS_MATRIX_MULTIPLY_VEC, 0);
-
-        float pitch = (float) Math.atan2(tempPosition[1], -tempPosition[2]);
-        float yaw = (float) Math.atan2(tempPosition[0], -tempPosition[2]);
-        Log.d("CHECK CRASH", "pitch = " + pitch + "   yaw=  " +yaw);
-        return Math.abs(pitch) < 0 && Math.abs(yaw) < 0;
+    private void resetPosition(){
+        Matrix.setLookAtM(camera, 0, 0, 0, CAMERA_Z, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f);
+        Matrix.setIdentityM(modelCube, 0);
+        Matrix.translateM(modelCube, 0, modelPosition[0], modelPosition[1], modelPosition[2]);
+        Matrix.setIdentityM(modelSkybox, 0);
+        Matrix.translateM(modelSkybox, 0, modelPosition[0], modelPosition[1], modelPosition[2]);
+        altitude = 0;
     }
 }
