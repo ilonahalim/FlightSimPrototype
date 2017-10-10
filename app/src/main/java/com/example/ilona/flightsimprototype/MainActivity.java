@@ -231,7 +231,7 @@ public class MainActivity extends GvrActivity implements GvrView.StereoRenderer{
         altitude = 0.0f;
 
         modelFloor = new float[20];
-        myTerrain = new Terrain();
+        myTerrain = new Terrain(1);
 
         modelSkybox = new float[16];
         mySkybox = new SkyBox();
@@ -242,7 +242,7 @@ public class MainActivity extends GvrActivity implements GvrView.StereoRenderer{
         headRotation = new float[4];
         headView = new float[16];
         vibrator = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
-        cameraCoor = new Vector3d(1.2f, 5f, 0.5f);
+        cameraCoor = new Vector3d(0f, 0f, 0f);
         forwardVec = new float[3];
         transposeMatrix = new float[16];
         //Matrix.setLookAtM(camera, 0, (float) cameraCoor.x, (float) cameraCoor.y, (float) cameraCoor.z, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f);
@@ -344,31 +344,6 @@ public class MainActivity extends GvrActivity implements GvrView.StereoRenderer{
 
         int skyVertexShader = myShaderLoader.loadGLShader(GLES20.GL_VERTEX_SHADER, R.raw.skybox_vertex);
         int skyFragmentShader = myShaderLoader.loadGLShader(GLES20.GL_FRAGMENT_SHADER, R.raw.skybox_fragment);
-        /*
-        int vertexShader = loadGLShader(GLES20.GL_VERTEX_SHADER, R.raw.light_vertex);
-        int gridShader = loadGLShader(GLES20.GL_FRAGMENT_SHADER, R.raw.grid_fragment);
-        int passthroughShader = loadGLShader(GLES20.GL_FRAGMENT_SHADER, R.raw.passthrough_fragment);
-*/
-        /*
-        cubeProgram = GLES20.glCreateProgram();
-        GLES20.glAttachShader(cubeProgram, skyVertexShader);
-        GLES20.glAttachShader(cubeProgram, skyFragmentShader);
-        GLES20.glLinkProgram(cubeProgram);
-        GLES20.glUseProgram(cubeProgram);
-
-        checkGLError("Cube program");
-
-        cubePositionParam = GLES20.glGetAttribLocation(cubeProgram, "a_Position");
-        //cubeNormalParam = GLES20.glGetAttribLocation(cubeProgram, "a_Normal");
-        //cubeColorParam = GLES20.glGetAttribLocation(cubeProgram, "a_Color");
-
-        //cubeModelParam = GLES20.glGetUniformLocation(cubeProgram, "u_Model");
-        //cubeModelViewParam = GLES20.glGetUniformLocation(cubeProgram, "u_MVMatrix");
-        cubeModelViewProjectionParam = GLES20.glGetUniformLocation(cubeProgram, "u_MVP");
-        //cubeLightPosParam = GLES20.glGetUniformLocation(cubeProgram, "u_LightPos");
-
-        checkGLError("Cube program params");
-        */
 
         cubeProgram = GLES20.glCreateProgram();
         GLES20.glAttachShader(cubeProgram, vertexShader);
@@ -389,26 +364,6 @@ public class MainActivity extends GvrActivity implements GvrView.StereoRenderer{
 
         checkGLError("Cube program params");
 
-/*
-        floorProgram = GLES20.glCreateProgram();
-        GLES20.glAttachShader(floorProgram, vertexShader);
-        GLES20.glAttachShader(floorProgram, gridShader);
-        GLES20.glLinkProgram(floorProgram);
-        GLES20.glUseProgram(floorProgram);
-
-        checkGLError("Floor program");
-
-        floorModelParam = GLES20.glGetUniformLocation(floorProgram, "u_Model");
-        floorModelViewParam = GLES20.glGetUniformLocation(floorProgram, "u_MVMatrix");
-        floorModelViewProjectionParam = GLES20.glGetUniformLocation(floorProgram, "u_MVP");
-        floorLightPosParam = GLES20.glGetUniformLocation(floorProgram, "u_LightPos");
-
-        floorPositionParam = GLES20.glGetAttribLocation(floorProgram, "a_Position");
-        floorNormalParam = GLES20.glGetAttribLocation(floorProgram, "a_Normal");
-        floorColorParam = GLES20.glGetAttribLocation(floorProgram, "a_Color");
-
-        checkGLError("Floor program params");
-*/
         Matrix.setIdentityM(modelFloor, 0);
         Matrix.translateM(modelFloor, 0, 0, -floorDepth, 0); // Floor appears below user.
 
@@ -424,8 +379,8 @@ public class MainActivity extends GvrActivity implements GvrView.StereoRenderer{
         Matrix.translateM(modelSkybox, 0, modelPosition[0], modelPosition[1], modelPosition[2]);
 
         //myTerrain.setTexture(loadTexture(this, R.drawable.grass));
-        myTerrain.generateFlatTerrain(terrainVertexShader, terrainFragmentShader, loadTexture(this, R.drawable.grass));
-
+        myTerrain.generateFlatTerrain();
+        myTerrain.linkFloorProgram(terrainVertexShader, terrainFragmentShader, loadTexture(this, R.drawable.grass));
 
 
         // Avoid any delays during start-up due to decoding of sound files.
@@ -565,7 +520,8 @@ public class MainActivity extends GvrActivity implements GvrView.StereoRenderer{
         // Set modelView for the floor, so we draw floor in the correct location
         Matrix.multiplyMM(modelView, 0, view, 0, modelFloor, 0);
         Matrix.multiplyMM(modelViewProjection, 0, perspective, 0, modelView, 0);
-        myTerrain.drawFloor(lightPosInEyeSpace, modelView, modelViewProjection);
+        //myTerrain.generateFlatTerrain();
+        myTerrain.drawFloor(lightPosInEyeSpace, modelView, modelViewProjection, cameraCoor);
 
 
     }
