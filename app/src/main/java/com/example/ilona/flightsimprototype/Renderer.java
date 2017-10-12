@@ -3,7 +3,6 @@ package com.example.ilona.flightsimprototype;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
-import android.opengl.GLES11;
 import android.opengl.GLES20;
 import android.opengl.GLES30;
 import android.opengl.GLUtils;
@@ -11,7 +10,6 @@ import android.opengl.Matrix;
 import android.os.Vibrator;
 import android.os.Bundle;
 import android.util.Log;
-import android.widget.Toast;
 
 import com.google.vr.sdk.audio.GvrAudioEngine;
 import com.google.vr.sdk.base.AndroidCompat;
@@ -29,23 +27,24 @@ import java.io.InputStreamReader;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
-import java.nio.ShortBuffer;
 
 import javax.microedition.khronos.egl.EGLConfig;
 
 import static android.opengl.GLES20.glGetError;
 
-public class MainActivity extends GvrActivity implements GvrView.StereoRenderer{
+public class Renderer extends GvrActivity implements GvrView.StereoRenderer{
     protected float[] modelCube;
     protected float[] modelPosition;
 
-    private static final String TAG = "MainActivity";
+    private static final String TAG = "Renderer";
 
     private static final float Z_NEAR = 0.1f;
     private static final float Z_FAR = 100.0f;
 
     private static final float CAMERA_Z = 0.501f;
     private Vector3d cameraCoor;
+    private float[] prevQuad;
+    private float[] currentQuad;
     private float[] forwardVec;
     private float[] transposeMatrix;
     private static final float TIME_DELTA = 0.3f;
@@ -98,6 +97,7 @@ public class MainActivity extends GvrActivity implements GvrView.StereoRenderer{
     protected float[] modelSkybox;
     private Terrain myTerrain;
     private SkyBox mySkybox;
+    private EndlessTerrain[] myEndlessTerrain;
 
     private float[] tempPosition;
     private float[] headRotation;
@@ -232,7 +232,22 @@ public class MainActivity extends GvrActivity implements GvrView.StereoRenderer{
 
         modelFloor = new float[20];
         myTerrain = new Terrain(1);
-
+        /*
+        myEndlessTerrain = new EndlessTerrain[9];
+        int xTemp = -1;
+        int zTemp = -1;
+        for(int i = 0; i< myEndlessTerrain.length; i++){
+            if(xTemp > 1)
+                xTemp = -1;
+            if(zTemp > 1)
+                zTemp = -1;
+            myEndlessTerrain[i] = new EndlessTerrain();
+            myEndlessTerrain[i].generateFlatTerrain();
+            myEndlessTerrain[i].setQuadrantIndex(xTemp, zTemp);
+            xTemp++;
+            zTemp++;
+        }
+*/
         modelSkybox = new float[16];
         mySkybox = new SkyBox();
 
@@ -243,9 +258,11 @@ public class MainActivity extends GvrActivity implements GvrView.StereoRenderer{
         headView = new float[16];
         vibrator = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
         cameraCoor = new Vector3d(0f, 0f, 0f);
+        prevQuad = new float[2];
+        currentQuad = new float[2];
         forwardVec = new float[3];
         transposeMatrix = new float[16];
-        //Matrix.setLookAtM(camera, 0, (float) cameraCoor.x, (float) cameraCoor.y, (float) cameraCoor.z, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f);
+        //Matrix.setLookAtM(camera, 0, (float) cameraCoor.x + 512, (float) cameraCoor.y, (float) cameraCoor.z - 512, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f);
         Matrix.setLookAtM(camera, 0, 0, 0, CAMERA_Z, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f);
         // Initialize 3D audio engine.
         gvrAudioEngine = new GvrAudioEngine(this, GvrAudioEngine.RenderingMode.BINAURAL_HIGH_QUALITY);
@@ -339,6 +356,7 @@ public class MainActivity extends GvrActivity implements GvrView.StereoRenderer{
         int gridShader = myShaderLoader.loadGLShader(GLES20.GL_FRAGMENT_SHADER, R.raw.grid_fragment);
         int passthroughShader = myShaderLoader.loadGLShader(GLES20.GL_FRAGMENT_SHADER, R.raw.passthrough_fragment);
 
+        int endlessTerrainVertexShader = myShaderLoader.loadGLShader(GLES20.GL_VERTEX_SHADER, R.raw.endless_terrain_vertex);
         int terrainVertexShader = myShaderLoader.loadGLShader(GLES20.GL_VERTEX_SHADER, R.raw.terrain_vertex);
         int terrainFragmentShader = myShaderLoader.loadGLShader(GLES20.GL_FRAGMENT_SHADER, R.raw.terrain_fragment);
 
@@ -381,8 +399,12 @@ public class MainActivity extends GvrActivity implements GvrView.StereoRenderer{
         //myTerrain.setTexture(loadTexture(this, R.drawable.grass));
         myTerrain.generateFlatTerrain();
         myTerrain.linkFloorProgram(terrainVertexShader, terrainFragmentShader, loadTexture(this, R.drawable.grass));
-
-
+        /*
+        int tempTexture = loadTexture(this, R.drawable.grass);
+        for(int i = 0; i< myEndlessTerrain.length; i++){
+            myEndlessTerrain[i].linkFloorProgram(endlessTerrainVertexShader, terrainFragmentShader, tempTexture);
+        }
+*/
         // Avoid any delays during start-up due to decoding of sound files.
         new Thread(
                 new Runnable() {
@@ -457,7 +479,7 @@ public class MainActivity extends GvrActivity implements GvrView.StereoRenderer{
         // Build the camera matrix and apply it to the ModelView.
         //Matrix.setLookAtM(camera, 0, 0.0f, 0.0f, CAMERA_Z, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f);
         //Matrix.setLookAtM(camera, 0, (float) cameraCoor.x, (float) cameraCoor.y, CAMERA_Z, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f);
-
+        //Matrix.translateM(camera, 0, 0, -50, 0);
         headTransform.getHeadView(headView, 0);
 
         // Update the 3d audio engine with the most recent head rotation.
@@ -465,16 +487,23 @@ public class MainActivity extends GvrActivity implements GvrView.StereoRenderer{
         gvrAudioEngine.setHeadRotation(
                 headRotation[0], headRotation[1], headRotation[2], headRotation[3]);
         Log.d("ALTITUDE", "altitude = " + altitude + "   forward vec=  " +forwardVec[1]);
-        if(isCrashLanding(altitude + forwardVec[1])){
-            resetPosition();
-        }
-        //if(!isCrashLanding(altitude + forwardVec[1])){
-            headTransform.getForwardVector(forwardVec, 0);
+        headTransform.getForwardVector(forwardVec, 0);
+        //if(isCrashLanding(altitude + forwardVec[1])){
+        //    resetPosition();
+        //}
+        if(!isCrashLanding(altitude + forwardVec[1])){
+        //else{
             Matrix.translateM(camera, 0, -forwardVec[0], -forwardVec[1], -forwardVec[2]);
             Matrix.translateM(modelSkybox, 0, forwardVec[0], forwardVec[1], forwardVec[2]);
             Matrix.translateM(modelCube, 0, forwardVec[0], forwardVec[1], forwardVec[2]);
             altitude += forwardVec[1];
-        //}
+            cameraCoor.x += forwardVec[0];
+            cameraCoor.y += forwardVec[1];
+            cameraCoor.z += forwardVec[2];
+            if(isQuadChange()){
+                handleQuadChange();
+            }
+        }
 
         //Log.d("NEW FRAME", "Z = " + cameraCoor.z + "   forward Z=  " +forwardVec[2]);
         // Regular update call to GVR audio engine.
@@ -522,6 +551,11 @@ public class MainActivity extends GvrActivity implements GvrView.StereoRenderer{
         Matrix.multiplyMM(modelViewProjection, 0, perspective, 0, modelView, 0);
         //myTerrain.generateFlatTerrain();
         myTerrain.drawFloor(lightPosInEyeSpace, modelView, modelViewProjection, cameraCoor);
+        /*
+        for(int i = 0; i< myEndlessTerrain.length; i++){
+            myEndlessTerrain[i].drawFloor(lightPosInEyeSpace, modelView, modelViewProjection, cameraCoor);
+        }
+        */
 
 
     }
@@ -650,5 +684,65 @@ public class MainActivity extends GvrActivity implements GvrView.StereoRenderer{
         Matrix.setIdentityM(modelSkybox, 0);
         Matrix.translateM(modelSkybox, 0, modelPosition[0], modelPosition[1], modelPosition[2]);
         altitude = 0;
+    }
+
+    private boolean isQuadChange(){
+        int i = 0;
+        int j = 0;
+        if (cameraCoor.x >= 0){
+            while (i*512-256 < cameraCoor.x){
+                i++;
+            }
+        }
+        else {
+            while ((i*512-256)*-1 > cameraCoor.x){
+                i--;
+            }
+        }
+        if (cameraCoor.z >= 0){
+            while (i*512-256 < cameraCoor.z){
+                j++;
+            }
+        }
+        else {
+            while ((i*512-256)*-1 > cameraCoor.z){
+                j--;
+            }
+        }
+        currentQuad[0] = i;
+        currentQuad[1] = j;
+        if (currentQuad[0] != prevQuad[0] || currentQuad[1] != prevQuad[1]){
+            return true;
+        }
+        else
+            return false;
+    }
+
+    private void handleQuadChange(){
+        if(prevQuad[0] < currentQuad[0]){//move to +x axis
+            for(int i = 0; i<9;i++){
+                int[] temp = myEndlessTerrain[i].getQuadrantIndex();
+                    myEndlessTerrain[i].setQuadrantIndex(temp[0]+1, temp[1]);
+            }
+        }
+        else if (prevQuad[0] > currentQuad[0]) {//move to -x axis
+            for(int i = 0; i<9;i++){
+                int[] temp = myEndlessTerrain[i].getQuadrantIndex();
+                myEndlessTerrain[i].setQuadrantIndex(temp[0]-1, temp[1]);
+            }
+        }
+        if(prevQuad[1] < currentQuad[1]){ //move to +z axis
+            for(int i = 0; i<9;i++){
+                int[] temp = myEndlessTerrain[i].getQuadrantIndex();
+                myEndlessTerrain[i].setQuadrantIndex(temp[0], temp[1]+1);
+            }
+        }
+        else if (prevQuad[1] > currentQuad[1]) { //move to -z axis
+            for(int i = 0; i<9;i++){
+                int[] temp = myEndlessTerrain[i].getQuadrantIndex();
+                myEndlessTerrain[i].setQuadrantIndex(temp[0], temp[1]-1);
+            }
+        }
+        prevQuad = currentQuad;
     }
 }

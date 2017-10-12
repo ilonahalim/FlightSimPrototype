@@ -30,7 +30,7 @@
         android:supportsRtl="true"
         android:theme="@style/VrActivityTheme"
         android:name=".App">
-        <activity android:name=".MainActivity"
+        <activity android:name=".Renderer"
             android:screenOrientation="landscape"
             android:configChanges="orientation|keyboardHidden|screenSize"
             android:enableVrMode="@string/gvr_vr_mode_component"
