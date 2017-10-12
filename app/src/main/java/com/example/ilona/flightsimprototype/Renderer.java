@@ -30,6 +30,7 @@ import java.nio.FloatBuffer;
 
 import javax.microedition.khronos.egl.EGLConfig;
 
+import static android.R.attr.start;
 import static android.opengl.GLES20.glGetError;
 
 public class Renderer extends GvrActivity implements GvrView.StereoRenderer{
@@ -43,8 +44,8 @@ public class Renderer extends GvrActivity implements GvrView.StereoRenderer{
 
     private static final float CAMERA_Z = 0.501f;
     private Vector3d cameraCoor;
-    private float[] prevQuad;
-    private float[] currentQuad;
+    private int[] prevQuad;
+    private int[] currentQuad;
     private float[] forwardVec;
     private float[] transposeMatrix;
     private static final float TIME_DELTA = 0.3f;
@@ -96,8 +97,24 @@ public class Renderer extends GvrActivity implements GvrView.StereoRenderer{
     private float[] modelFloor;
     protected float[] modelSkybox;
     private Terrain myTerrain;
+    private Terrain[] myTerrainArray;
+
     private SkyBox mySkybox;
     private EndlessTerrain[] myEndlessTerrain;
+    private EndlessTerrain endlessTerrain;
+    /*
+    private EndlessTerrain endlessTerrain2;
+    private EndlessTerrain endlessTerrain3;
+    private EndlessTerrain endlessTerrain4;
+    private EndlessTerrain endlessTerrain5;
+    private EndlessTerrain endlessTerrain6;
+    private EndlessTerrain endlessTerrain7;
+    private EndlessTerrain endlessTerrain8;
+    private EndlessTerrain endlessTerrain9;
+    */
+
+    private float totalTime = 0f;
+    private int totalFrames = 0;
 
     private float[] tempPosition;
     private float[] headRotation;
@@ -231,23 +248,30 @@ public class Renderer extends GvrActivity implements GvrView.StereoRenderer{
         altitude = 0.0f;
 
         modelFloor = new float[20];
-        myTerrain = new Terrain(1);
+        //myTerrain = new Terrain(1);
         /*
-        myEndlessTerrain = new EndlessTerrain[9];
-        int xTemp = -1;
-        int zTemp = -1;
-        for(int i = 0; i< myEndlessTerrain.length; i++){
-            if(xTemp > 1)
-                xTemp = -1;
-            if(zTemp > 1)
-                zTemp = -1;
-            myEndlessTerrain[i] = new EndlessTerrain();
-            myEndlessTerrain[i].generateFlatTerrain();
-            myEndlessTerrain[i].setQuadrantIndex(xTemp, zTemp);
-            xTemp++;
-            zTemp++;
+        myTerrainArray = new Terrain[9];
+        for(int i = 0; i< myTerrainArray.length; i++){
+            myTerrainArray[i] = new Terrain(1);
         }
 */
+        endlessTerrain = new EndlessTerrain();
+        /*
+        endlessTerrain2 = new EndlessTerrain();
+        endlessTerrain3 = new EndlessTerrain();
+        endlessTerrain4 = new EndlessTerrain();
+        endlessTerrain5 = new EndlessTerrain();
+        endlessTerrain6 = new EndlessTerrain();
+        endlessTerrain7 = new EndlessTerrain();
+        endlessTerrain8 = new EndlessTerrain();
+        endlessTerrain9 = new EndlessTerrain();
+        */
+
+        myEndlessTerrain = new EndlessTerrain[9];
+        for(int i = 0; i< myEndlessTerrain.length; i++){
+            myEndlessTerrain[i] = new EndlessTerrain();
+        }
+
         modelSkybox = new float[16];
         mySkybox = new SkyBox();
 
@@ -258,8 +282,8 @@ public class Renderer extends GvrActivity implements GvrView.StereoRenderer{
         headView = new float[16];
         vibrator = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
         cameraCoor = new Vector3d(0f, 0f, 0f);
-        prevQuad = new float[2];
-        currentQuad = new float[2];
+        prevQuad = new int[2];
+        currentQuad = new int[2];
         forwardVec = new float[3];
         transposeMatrix = new float[16];
         //Matrix.setLookAtM(camera, 0, (float) cameraCoor.x + 512, (float) cameraCoor.y, (float) cameraCoor.z - 512, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f);
@@ -397,14 +421,65 @@ public class Renderer extends GvrActivity implements GvrView.StereoRenderer{
         Matrix.translateM(modelSkybox, 0, modelPosition[0], modelPosition[1], modelPosition[2]);
 
         //myTerrain.setTexture(loadTexture(this, R.drawable.grass));
-        myTerrain.generateFlatTerrain();
-        myTerrain.linkFloorProgram(terrainVertexShader, terrainFragmentShader, loadTexture(this, R.drawable.grass));
+        //myTerrain.generateFlatTerrain();
+        //myTerrain.linkFloorProgram(terrainVertexShader, terrainFragmentShader, loadTexture(this, R.drawable.grass));
         /*
-        int tempTexture = loadTexture(this, R.drawable.grass);
-        for(int i = 0; i< myEndlessTerrain.length; i++){
-            myEndlessTerrain[i].linkFloorProgram(endlessTerrainVertexShader, terrainFragmentShader, tempTexture);
+        for(int i = 0; i< myTerrainArray.length; i++){
+            myTerrainArray[i].generateFlatTerrain();
+            myTerrainArray[i].linkFloorProgram(terrainVertexShader, terrainFragmentShader, loadTexture(this, R.drawable.grass));
         }
 */
+        endlessTerrain.generateFlatTerrain();
+        endlessTerrain.setQuadrantIndex(0, 0);
+        endlessTerrain.linkFloorProgram(endlessTerrainVertexShader, terrainFragmentShader, loadTexture(this, R.drawable.grass));
+/*
+        endlessTerrain2.generateFlatTerrain();
+        endlessTerrain2.setQuadrantIndex(0, -1);
+        endlessTerrain2.linkFloorProgram(endlessTerrainVertexShader, terrainFragmentShader, loadTexture(this, R.drawable.grass));
+
+        endlessTerrain3.generateFlatTerrain();
+        endlessTerrain3.setQuadrantIndex(0, 1);
+        endlessTerrain3.linkFloorProgram(endlessTerrainVertexShader, terrainFragmentShader, loadTexture(this, R.drawable.grass));
+
+        endlessTerrain4.generateFlatTerrain();
+        endlessTerrain4.setQuadrantIndex(1, -1);
+        endlessTerrain4.linkFloorProgram(endlessTerrainVertexShader, terrainFragmentShader, loadTexture(this, R.drawable.grass));
+
+        endlessTerrain5.generateFlatTerrain();
+        endlessTerrain5.setQuadrantIndex(1, 0);
+        endlessTerrain5.linkFloorProgram(endlessTerrainVertexShader, terrainFragmentShader, loadTexture(this, R.drawable.grass));
+
+        endlessTerrain6.generateFlatTerrain();
+        endlessTerrain6.setQuadrantIndex(1, 1);
+        endlessTerrain6.linkFloorProgram(endlessTerrainVertexShader, terrainFragmentShader, loadTexture(this, R.drawable.grass));
+
+        endlessTerrain7.generateFlatTerrain();
+        endlessTerrain7.setQuadrantIndex(-1, -1);
+        endlessTerrain7.linkFloorProgram(endlessTerrainVertexShader, terrainFragmentShader, loadTexture(this, R.drawable.grass));
+
+        endlessTerrain8.generateFlatTerrain();
+        endlessTerrain8.setQuadrantIndex(-1, 0);
+        endlessTerrain8.linkFloorProgram(endlessTerrainVertexShader, terrainFragmentShader, loadTexture(this, R.drawable.grass));
+
+        endlessTerrain9.generateFlatTerrain();
+        endlessTerrain9.setQuadrantIndex(-1, 1);
+        endlessTerrain9.linkFloorProgram(endlessTerrainVertexShader, terrainFragmentShader, loadTexture(this, R.drawable.grass));
+*/
+
+        int tempTexture = loadTexture(this, R.drawable.grass);
+        for(int i = 0; i< myEndlessTerrain.length; i++){
+            myEndlessTerrain[i].generateFlatTerrain();
+            myEndlessTerrain[i].linkFloorProgram(endlessTerrainVertexShader, terrainFragmentShader, tempTexture);
+        }
+        int n = 0;
+        for (int xTemp = -1; xTemp <= 1; xTemp++){
+            for (int zTemp = -1; zTemp <= 1; zTemp++){
+                myEndlessTerrain[n].setQuadrantIndex(xTemp, zTemp);
+                n++;
+                Log.d(TAG, "onSurfaceCreated: index:[" + xTemp + ", " + zTemp + "]");
+            }
+        }
+
         // Avoid any delays during start-up due to decoding of sound files.
         new Thread(
                 new Runnable() {
@@ -427,6 +502,7 @@ public class Renderer extends GvrActivity implements GvrView.StereoRenderer{
         updateModelPosition();
 
         checkGLError("onSurfaceCreated");
+        Log.d(TAG, "Quad Change: current quad:" + currentQuad[0] +", " + currentQuad[1]);
     }
 
     /**
@@ -486,7 +562,9 @@ public class Renderer extends GvrActivity implements GvrView.StereoRenderer{
         headTransform.getQuaternion(headRotation, 0);
         gvrAudioEngine.setHeadRotation(
                 headRotation[0], headRotation[1], headRotation[2], headRotation[3]);
-        Log.d("ALTITUDE", "altitude = " + altitude + "   forward vec=  " +forwardVec[1]);
+        //Log.d("ALTITUDE", "altitude = " + altitude + "   forward vec=  " +forwardVec[1]);
+        //Log.d(TAG, "On new frame: current pos:" + cameraCoor.x +", " + cameraCoor.z);
+        //Log.d(TAG, "On new frame: current quad:" + currentQuad[0] +", " + currentQuad[1]);
         headTransform.getForwardVector(forwardVec, 0);
         //if(isCrashLanding(altitude + forwardVec[1])){
         //    resetPosition();
@@ -500,8 +578,11 @@ public class Renderer extends GvrActivity implements GvrView.StereoRenderer{
             cameraCoor.x += forwardVec[0];
             cameraCoor.y += forwardVec[1];
             cameraCoor.z += forwardVec[2];
+            Log.d(TAG, "On new frame: current pos:" + cameraCoor.x +", " + cameraCoor.z);
+            Log.d(TAG, "On new frame: current quad:" + currentQuad[0] +", " + currentQuad[1]);
             if(isQuadChange()){
-                handleQuadChange();
+                //handleQuadChange();
+                //endlessTerrain.setQuadrantIndex(currentQuad[0], currentQuad[1]);
             }
         }
 
@@ -510,6 +591,7 @@ public class Renderer extends GvrActivity implements GvrView.StereoRenderer{
         gvrAudioEngine.update();
 
         checkGLError("onReadyToDraw");
+        checkSpeed();
     }
 
     protected void setCubeRotation() {
@@ -550,12 +632,23 @@ public class Renderer extends GvrActivity implements GvrView.StereoRenderer{
         Matrix.multiplyMM(modelView, 0, view, 0, modelFloor, 0);
         Matrix.multiplyMM(modelViewProjection, 0, perspective, 0, modelView, 0);
         //myTerrain.generateFlatTerrain();
-        myTerrain.drawFloor(lightPosInEyeSpace, modelView, modelViewProjection, cameraCoor);
+        //myTerrain.drawFloor(lightPosInEyeSpace, modelView, modelViewProjection, cameraCoor);
+
+        endlessTerrain.drawFloor(lightPosInEyeSpace, modelView, modelViewProjection, currentQuad);
+        //endlessTerrain2.drawFloor(lightPosInEyeSpace, modelView, modelViewProjection, currentQuad);
+        //endlessTerrain3.drawFloor(lightPosInEyeSpace, modelView, modelViewProjection, currentQuad);
+        //endlessTerrain4.drawFloor(lightPosInEyeSpace, modelView, modelViewProjection, currentQuad);
+        //endlessTerrain5.drawFloor(lightPosInEyeSpace, modelView, modelViewProjection, currentQuad);
+        //endlessTerrain6.drawFloor(lightPosInEyeSpace, modelView, modelViewProjection, currentQuad);
+        //endlessTerrain7.drawFloor(lightPosInEyeSpace, modelView, modelViewProjection, currentQuad);
+        //endlessTerrain8.drawFloor(lightPosInEyeSpace, modelView, modelViewProjection, currentQuad);
+        //endlessTerrain9.drawFloor(lightPosInEyeSpace, modelView, modelViewProjection, currentQuad);
+
         /*
         for(int i = 0; i< myEndlessTerrain.length; i++){
-            myEndlessTerrain[i].drawFloor(lightPosInEyeSpace, modelView, modelViewProjection, cameraCoor);
+            myEndlessTerrain[i].drawFloor(lightPosInEyeSpace, modelView, modelViewProjection, currentQuad);
         }
-        */
+*/
 
 
     }
@@ -689,6 +782,7 @@ public class Renderer extends GvrActivity implements GvrView.StereoRenderer{
     private boolean isQuadChange(){
         int i = 0;
         int j = 0;
+        /*
         if (cameraCoor.x >= 0){
             while (i*512-256 < cameraCoor.x){
                 i++;
@@ -709,8 +803,9 @@ public class Renderer extends GvrActivity implements GvrView.StereoRenderer{
                 j--;
             }
         }
-        currentQuad[0] = i;
-        currentQuad[1] = j;
+        */
+        currentQuad[0] = (int) Math.round(cameraCoor.x/512);
+        currentQuad[1] = (int) Math.round(cameraCoor.z/512);
         if (currentQuad[0] != prevQuad[0] || currentQuad[1] != prevQuad[1]){
             return true;
         }
@@ -744,5 +839,16 @@ public class Renderer extends GvrActivity implements GvrView.StereoRenderer{
             }
         }
         prevQuad = currentQuad;
+    }
+
+    private void checkSpeed(){
+        long start = System.nanoTime();
+
+        long stop = System.nanoTime();
+
+        totalTime += stop - start;
+        totalFrames++;
+
+        Log.d("TEST", (totalTime / totalFrames) / 1000000 + " ms");
     }
 }

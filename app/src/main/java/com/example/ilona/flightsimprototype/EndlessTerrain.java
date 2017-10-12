@@ -12,13 +12,14 @@ import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
 import java.nio.ShortBuffer;
 
+import static android.opengl.GLES20.GL_BLEND;
 import static android.opengl.GLES20.GL_CULL_FACE;
 import static android.opengl.GLES20.glDisable;
 import static android.opengl.GLES20.glGetError;
 
 
 public class EndlessTerrain{
-    private static final String TAG = "TERRAIN";
+    private static final String TAG = "ENDLESS TERRAIN";
     private int VERTEX_COUNT = 256;
     private int SIZE = 512;
     private int MAX_HEIGHT = 80;
@@ -29,6 +30,7 @@ public class EndlessTerrain{
     private FloatBuffer floorNormals;
     private FloatBuffer floorTextureCoords;
     private ShortBuffer floorIndices;
+    private FloatBuffer floorQuadrant;
 
     public int count;
     public float[] vertices;
@@ -76,6 +78,10 @@ public class EndlessTerrain{
         textureCoords = new float[count*2];
         quadrant = new float[2];
         indices = new short[6*(VERTEX_COUNT-1)*(VERTEX_COUNT-1)];
+
+        ByteBuffer bbFloorQuadrant = ByteBuffer.allocateDirect(2 * 4);
+        bbFloorQuadrant.order(ByteOrder.nativeOrder());
+        floorQuadrant = bbFloorQuadrant.asFloatBuffer();
 
         ByteBuffer bbFloorVertices = ByteBuffer.allocateDirect(vertices.length * 4);
         bbFloorVertices.order(ByteOrder.nativeOrder());
@@ -187,13 +193,14 @@ public class EndlessTerrain{
         floorModelViewParam = GLES20.glGetUniformLocation(floorProgram, "u_MVMatrix");
         floorModelViewProjectionParam = GLES20.glGetUniformLocation(floorProgram, "u_MVPMatrix");
         floorLightPosParam = GLES20.glGetUniformLocation(floorProgram, "u_LightPos");
-        //floorTextureParam = GLES20.glGetUniformLocation(floorProgram, "u_Texture");
+        floorTextureParam = GLES20.glGetUniformLocation(floorProgram, "u_Texture");
         floorQuadrantParam = GLES20.glGetUniformLocation(floorProgram, "u_Quadrant");
 
         floorPositionParam = GLES20.glGetAttribLocation(floorProgram, "a_Position");
         floorNormalParam = GLES20.glGetAttribLocation(floorProgram, "a_Normal");
-        floorColorParam = GLES20.glGetAttribLocation(floorProgram, "a_Color");
-        //floorTextureCoordsParam = GLES20.glGetAttribLocation(floorProgram, "a_TexCoordinate");
+        //floorColorParam = GLES20.glGetAttribLocation(floorProgram, "a_Color");
+        floorTextureCoordsParam = GLES20.glGetAttribLocation(floorProgram, "a_TexCoordinate");
+        //floorQuadrantParam = GLES20.glGetAttribLocation(floorProgram, "u_Quadrant");
     }
 
     private float getHeight(int x, int z, HeightGenerator gen){
@@ -227,31 +234,12 @@ public class EndlessTerrain{
      * position of the light, so if we rewrite our code to draw the floor first, the lighting might
      * look strange.
      */
-    public void drawFloor(float[] lightPosInEyeSpace, float[] modelView, float[] modelViewProjection, Vector3d cameraPos) {
-        int i = 0;
-        int j = 0;
-        if (cameraPos.x >= 0){
-            while (i*SIZE-SIZE/2 < cameraPos.x){
-                i++;
-            }
-        }
-        else {
-            while ((i*SIZE-SIZE/2)*-1 > cameraPos.x){
-                i--;
-            }
-        }
-        if (cameraPos.z >= 0){
-            while (i*SIZE-SIZE/2 < cameraPos.z){
-                j++;
-            }
-        }
-        else {
-            while ((i*SIZE-SIZE/2)*-1 > cameraPos.z){
-                j--;
-            }
-        }
-        quadrant[0] = i + quadrantIndex[0];
-        quadrant[1] = j + quadrantIndex[0];
+    public void drawFloor(float[] lightPosInEyeSpace, float[] modelView, float[] modelViewProjection, int[] camQuadrant) {
+        quadrant[0] = camQuadrant[0] + quadrantIndex[0];
+        quadrant[1] = camQuadrant[1] + quadrantIndex[1];
+
+        floorQuadrant.put(quadrant);
+        floorQuadrant.position(0);
 
         floorVertices.put(vertices);
         floorVertices.position(0);
@@ -268,17 +256,18 @@ public class EndlessTerrain{
         floorIndices.put(indices);
         floorIndices.position(0);
 
+        glDisable(GL_BLEND);
         GLES20.glUseProgram(floorProgram);
         checkGLError("using floor program");
 
         // Set the active texture unit to texture unit 0.
-        //GLES20.glActiveTexture(GLES20.GL_TEXTURE0);
+        GLES20.glActiveTexture(GLES20.GL_TEXTURE0);
 
         // Bind the texture to this unit.
-        //GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, mTextureDataHandle);
+        GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, mTextureDataHandle);
 
         // Tell the texture uniform sampler to use this texture in the shader by binding to texture unit 0.
-        //GLES20.glUniform1i(floorTextureParam, 0);
+        GLES20.glUniform1i(floorTextureParam, 0);
 
         // Set ModelView, MVP, position, normals, and color.
         GLES20.glUniform3fv(floorLightPosParam, 1, lightPosInEyeSpace, 0);
@@ -293,27 +282,30 @@ public class EndlessTerrain{
         checkGLError("vertex attrib pointer vertices");
         GLES20.glVertexAttribPointer(floorNormalParam, 3, GLES20.GL_FLOAT, false, 0, floorNormals);
         checkGLError("vertex attrib normals");
-        GLES20.glVertexAttribPointer(floorColorParam, 4, GLES20.GL_FLOAT, false, 0, floorColors);
-        checkGLError("vertex attrib colors");
-        //GLES20.glVertexAttribPointer(floorTextureCoordsParam, 2, GLES20.GL_FLOAT, false, 0, floorTextureCoords);
+        //GLES20.glVertexAttribPointer(floorColorParam, 4, GLES20.GL_FLOAT, false, 0, floorColors);
+        //checkGLError("vertex attrib colors");
+        GLES20.glVertexAttribPointer(floorTextureCoordsParam, 2, GLES20.GL_FLOAT, false, 0, floorTextureCoords);
+        //checkGLError("vertex attrib texture coords");
+        //GLES20.glVertexAttribPointer(floorQuadrantParam, 2, GLES20.GL_FLOAT, false, 0, floorQuadrant);
         //checkGLError("vertex attrib texture coords");
 
         GLES20.glEnableVertexAttribArray(floorPositionParam);
         GLES20.glEnableVertexAttribArray(floorNormalParam);
-        GLES20.glEnableVertexAttribArray(floorColorParam);
+        //GLES20.glEnableVertexAttribArray(floorColorParam);
         GLES20.glEnableVertexAttribArray(floorTextureCoordsParam);
         //checkGLError("enable vertex attribs");
 
         glDisable(GL_CULL_FACE);
         GLES20.glDrawElements(GLES20.GL_TRIANGLES, indices.length, GLES20.GL_UNSIGNED_SHORT, floorIndices);
+        //Log.d(TAG, "Drawing: current quad:" + quadrant[0] +", " + quadrant[1]);
         checkGLError("drawing floor");
 
         GLES20.glDisableVertexAttribArray(floorPositionParam);
         GLES20.glDisableVertexAttribArray(floorNormalParam);
-        GLES20.glDisableVertexAttribArray(floorColorParam);
+        //GLES20.glDisableVertexAttribArray(floorColorParam);
         GLES20.glDisableVertexAttribArray(floorTextureCoordsParam);
 
-
+        GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, 0);
     }
 
 

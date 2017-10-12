@@ -336,30 +336,8 @@ public class Terrain{
      * look strange.
      */
     public void drawFloor(float[] lightPosInEyeSpace, float[] modelView, float[] modelViewProjection, Vector3d cameraPos) {
-        int i = 0;
-        int j = 0;
-        if (cameraPos.x >= 0){
-            while (i*SIZE-SIZE/2 < cameraPos.x){
-                i++;
-            }
-        }
-        else {
-            while ((i*SIZE-SIZE/2)*-1 > cameraPos.x){
-                i--;
-            }
-        }
-        if (cameraPos.z >= 0){
-            while (i*SIZE-SIZE/2 < cameraPos.z){
-                j++;
-            }
-        }
-        else {
-            while ((i*SIZE-SIZE/2)*-1 > cameraPos.z){
-                j--;
-            }
-        }
-        quadrant[0] = i;
-        quadrant[1] = j;
+        quadrant[0] = 0;
+        quadrant[1] = 0;
 
         floorVertices.put(vertices);
         floorVertices.position(0);
@@ -384,7 +362,6 @@ public class Terrain{
 
         // Bind the texture to this unit.
         GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, mTextureDataHandle);
-
         // Tell the texture uniform sampler to use this texture in the shader by binding to texture unit 0.
         GLES20.glUniform1i(floorTextureParam, 0);
 
