@@ -3,6 +3,7 @@ package com.example.ilona.flightsimprototype;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.opengl.GLES10;
 import android.opengl.GLES20;
 import android.opengl.GLES30;
 import android.opengl.GLUtils;
@@ -29,6 +30,7 @@ import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
 
 import javax.microedition.khronos.egl.EGLConfig;
+import javax.microedition.khronos.opengles.GL10;
 
 import static android.opengl.GLES20.glGetError;
 
@@ -110,6 +112,19 @@ public class Renderer extends GvrActivity implements GvrView.StereoRenderer{
     private GvrAudioEngine gvrAudioEngine;
     private volatile int sourceId = GvrAudioEngine.INVALID_ID;
     private volatile int successSourceId = GvrAudioEngine.INVALID_ID;
+
+
+    private Cockpit myCockpit;
+    private FloatBuffer vertexBuffer;
+    /* Stage width & Height*/
+    private float w, h;
+
+    /*Screen Width & Height*/
+    private int screenW, screenH;
+
+    private String img;
+
+    private float xPos, yPos, r;
 
 
     private ShaderLoader myShaderLoader;
@@ -250,6 +265,9 @@ public class Renderer extends GvrActivity implements GvrView.StereoRenderer{
 */
         modelSkybox = new float[16];
         mySkybox = new SkyBox();
+        String img = "f22_cockpit_cropped_final";
+        myCockpit = new Cockpit(getResources().getIdentifier(img, "drawable", App.context().getPackageName
+                ()));
 
         tempPosition = new float[4];
         // Model first appears directly in front of user.
@@ -311,6 +329,24 @@ public class Renderer extends GvrActivity implements GvrView.StereoRenderer{
     @Override
     public void onSurfaceChanged(int width, int height) {
         Log.i(TAG, "onSurfaceChanged");
+
+        GLES10.glClearColor(0, 0, 0, 1.0f);
+        if(width > height) {
+            h = 600;
+            w = width * h / height;
+        }
+
+        else {
+            w = 600;
+            h = height * w / width;
+        }
+
+        screenW = width;
+        screenH = height;
+
+        xPos = w/2;
+        yPos = h/2;
+        r=1;
     }
 
     /**
@@ -426,7 +462,36 @@ public class Renderer extends GvrActivity implements GvrView.StereoRenderer{
 
         updateModelPosition();
 
+        float vertices[] = {
+                -0.5f, -0.5f, 0.0f, //left-bottom
+                0.5f, -0.5f, 0.0f, //right-bottom
+                -0.5f, 0.5f, 0.0f, //left-top
+                0.5f, 0.5f, 0.0f, //right-top
+        };
+
+        ByteBuffer vbb = ByteBuffer.allocateDirect(vertices.length * 4);
+        vbb.order(ByteOrder.nativeOrder());
+        vertexBuffer = vbb.asFloatBuffer();
+        vertexBuffer.put(vertices);
+        vertexBuffer.position(0);
+
+        GLES20.glEnable(GL10.GL_ALPHA_TEST);
+        GLES20.glEnable(GL10.GL_BLEND);
+        GLES20.glBlendFunc(GL10.GL_ONE, GL10.GL_ONE_MINUS_SRC_ALPHA);
+
+        // We are in 2D, so no depth needed.
+        GLES20.glDisable(GL10.GL_DEPTH_TEST);
+
+        // Enable vertex arrays (used to draw primitives).
+        GLES10.glEnableClientState(GL10.GL_VERTEX_ARRAY);
+
+        GLES10.glEnableClientState(GL10.GL_TEXTURE_COORD_ARRAY);
+
+
+        myCockpit.load(App.context());
+
         checkGLError("onSurfaceCreated");
+
     }
 
     /**
@@ -556,6 +621,10 @@ public class Renderer extends GvrActivity implements GvrView.StereoRenderer{
             myEndlessTerrain[i].drawFloor(lightPosInEyeSpace, modelView, modelViewProjection, cameraCoor);
         }
         */
+
+        myCockpit.prepare(GL10.GL_CLAMP_TO_EDGE);
+        GLES10.glVertexPointer(3, GL10.GL_FLOAT, 0, vertexBuffer);
+        myCockpit.draw(xPos, yPos, myCockpit.getWidth()*r, myCockpit.getHeight()*r, 0);
 
 
     }
