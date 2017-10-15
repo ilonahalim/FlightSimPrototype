@@ -34,7 +34,7 @@ public class SkyBox {
     private int skyLightPosParam;
     private int textureDataHandle;
 
-    private static final float SIZE = 50f;
+    private static final float SIZE = 500f;
 
     private static final float[] VERTICES = {
             -SIZE,  SIZE, -SIZE,

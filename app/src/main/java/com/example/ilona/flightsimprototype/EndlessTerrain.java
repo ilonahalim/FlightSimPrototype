@@ -20,7 +20,7 @@ import static android.opengl.GLES20.glGetError;
 
 public class EndlessTerrain{
     private static final String TAG = "ENDLESS TERRAIN";
-    private int VERTEX_COUNT = 256;
+    private int VERTEX_COUNT = 128;
     private int SIZE = 512;
     private int MAX_HEIGHT = 80;
     private int MAX_PIXEL_COLOR = 256 * 256 * 256;
@@ -177,6 +177,23 @@ public class EndlessTerrain{
             }
         }
 
+        floorQuadrant.put(quadrant);
+        floorQuadrant.position(0);
+
+        floorVertices.put(vertices);
+        floorVertices.position(0);
+
+        floorTextureCoords.put(textureCoords);
+        floorTextureCoords.position(0);
+
+        floorNormals.put(normals);
+        floorNormals.position(0);
+
+        floorColors.put(colors);
+        floorColors.position(0);
+
+        floorIndices.put(indices);
+        floorIndices.position(0);
     }
 
     public void linkFloorProgram(int vertexShader, int fragmentShader, int texture){
@@ -199,6 +216,7 @@ public class EndlessTerrain{
         floorPositionParam = GLES20.glGetAttribLocation(floorProgram, "a_Position");
         floorNormalParam = GLES20.glGetAttribLocation(floorProgram, "a_Normal");
         //floorColorParam = GLES20.glGetAttribLocation(floorProgram, "a_Color");
+        checkGLError("link color");
         floorTextureCoordsParam = GLES20.glGetAttribLocation(floorProgram, "a_TexCoordinate");
         //floorQuadrantParam = GLES20.glGetAttribLocation(floorProgram, "u_Quadrant");
     }
@@ -238,23 +256,8 @@ public class EndlessTerrain{
         quadrant[0] = camQuadrant[0] + quadrantIndex[0];
         quadrant[1] = camQuadrant[1] + quadrantIndex[1];
 
-        floorQuadrant.put(quadrant);
-        floorQuadrant.position(0);
-
-        floorVertices.put(vertices);
-        floorVertices.position(0);
-
-        floorTextureCoords.put(textureCoords);
-        floorTextureCoords.position(0);
-
-        floorNormals.put(normals);
-        floorNormals.position(0);
-
-        floorColors.put(colors);
-        floorColors.position(0);
-
-        floorIndices.put(indices);
-        floorIndices.position(0);
+        //quadrant[0] = quadrantIndex[0];
+        //quadrant[1] = quadrantIndex[1];
 
         glDisable(GL_BLEND);
         GLES20.glUseProgram(floorProgram);
@@ -285,7 +288,7 @@ public class EndlessTerrain{
         //GLES20.glVertexAttribPointer(floorColorParam, 4, GLES20.GL_FLOAT, false, 0, floorColors);
         //checkGLError("vertex attrib colors");
         GLES20.glVertexAttribPointer(floorTextureCoordsParam, 2, GLES20.GL_FLOAT, false, 0, floorTextureCoords);
-        //checkGLError("vertex attrib texture coords");
+        checkGLError("vertex attrib texture coords");
         //GLES20.glVertexAttribPointer(floorQuadrantParam, 2, GLES20.GL_FLOAT, false, 0, floorQuadrant);
         //checkGLError("vertex attrib texture coords");
 

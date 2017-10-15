@@ -42,7 +42,7 @@ public class Renderer extends GvrActivity implements GvrView.StereoRenderer{
     private static final float Z_NEAR = 0.1f;
     private static final float Z_FAR = 100.0f;
 
-    private static final float CAMERA_Z = 0.501f;
+    private static final float CAMERA_Z = 5.501f;
     private Vector3d cameraCoor;
     private int[] prevQuad;
     private int[] currentQuad;
@@ -381,6 +381,7 @@ public class Renderer extends GvrActivity implements GvrView.StereoRenderer{
         int passthroughShader = myShaderLoader.loadGLShader(GLES20.GL_FRAGMENT_SHADER, R.raw.passthrough_fragment);
 
         int endlessTerrainVertexShader = myShaderLoader.loadGLShader(GLES20.GL_VERTEX_SHADER, R.raw.endless_terrain_vertex);
+        int endlessTerrainFragmentShader = myShaderLoader.loadGLShader(GLES20.GL_FRAGMENT_SHADER, R.raw.endless_terrain_fragment);
         int terrainVertexShader = myShaderLoader.loadGLShader(GLES20.GL_VERTEX_SHADER, R.raw.terrain_vertex);
         int terrainFragmentShader = myShaderLoader.loadGLShader(GLES20.GL_FRAGMENT_SHADER, R.raw.terrain_fragment);
 
@@ -431,7 +432,7 @@ public class Renderer extends GvrActivity implements GvrView.StereoRenderer{
 */
         endlessTerrain.generateFlatTerrain();
         endlessTerrain.setQuadrantIndex(0, 0);
-        endlessTerrain.linkFloorProgram(endlessTerrainVertexShader, terrainFragmentShader, loadTexture(this, R.drawable.grass));
+        endlessTerrain.linkFloorProgram(endlessTerrainVertexShader, endlessTerrainFragmentShader, loadTexture(this, R.drawable.grass));
 /*
         endlessTerrain2.generateFlatTerrain();
         endlessTerrain2.setQuadrantIndex(0, -1);
@@ -469,7 +470,8 @@ public class Renderer extends GvrActivity implements GvrView.StereoRenderer{
         int tempTexture = loadTexture(this, R.drawable.grass);
         for(int i = 0; i< myEndlessTerrain.length; i++){
             myEndlessTerrain[i].generateFlatTerrain();
-            myEndlessTerrain[i].linkFloorProgram(endlessTerrainVertexShader, terrainFragmentShader, tempTexture);
+            myEndlessTerrain[i].linkFloorProgram(endlessTerrainVertexShader, endlessTerrainFragmentShader, tempTexture);
+            checkGLError("endless terrain array link program");
         }
         int n = 0;
         for (int xTemp = -1; xTemp <= 1; xTemp++){
@@ -477,6 +479,7 @@ public class Renderer extends GvrActivity implements GvrView.StereoRenderer{
                 myEndlessTerrain[n].setQuadrantIndex(xTemp, zTemp);
                 n++;
                 Log.d(TAG, "onSurfaceCreated: index:[" + xTemp + ", " + zTemp + "]");
+                checkGLError("endless terrain array set quad index");
             }
         }
 
@@ -634,7 +637,7 @@ public class Renderer extends GvrActivity implements GvrView.StereoRenderer{
         //myTerrain.generateFlatTerrain();
         //myTerrain.drawFloor(lightPosInEyeSpace, modelView, modelViewProjection, cameraCoor);
 
-        endlessTerrain.drawFloor(lightPosInEyeSpace, modelView, modelViewProjection, currentQuad);
+        //endlessTerrain.drawFloor(lightPosInEyeSpace, modelView, modelViewProjection, currentQuad);
         //endlessTerrain2.drawFloor(lightPosInEyeSpace, modelView, modelViewProjection, currentQuad);
         //endlessTerrain3.drawFloor(lightPosInEyeSpace, modelView, modelViewProjection, currentQuad);
         //endlessTerrain4.drawFloor(lightPosInEyeSpace, modelView, modelViewProjection, currentQuad);
@@ -644,11 +647,11 @@ public class Renderer extends GvrActivity implements GvrView.StereoRenderer{
         //endlessTerrain8.drawFloor(lightPosInEyeSpace, modelView, modelViewProjection, currentQuad);
         //endlessTerrain9.drawFloor(lightPosInEyeSpace, modelView, modelViewProjection, currentQuad);
 
-        /*
+
         for(int i = 0; i< myEndlessTerrain.length; i++){
             myEndlessTerrain[i].drawFloor(lightPosInEyeSpace, modelView, modelViewProjection, currentQuad);
         }
-*/
+
 
 
     }
@@ -848,7 +851,7 @@ public class Renderer extends GvrActivity implements GvrView.StereoRenderer{
 
         totalTime += stop - start;
         totalFrames++;
-
-        Log.d("TEST", (totalTime / totalFrames) / 1000000 + " ms");
+        //Log.d("TEST", (totalTime / totalFrames) / 1000000 + " ms");
+        Log.d("TEST", totalFrames / (totalTime / 1000000000) + " fps");
     }
 }
