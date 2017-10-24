@@ -78,7 +78,9 @@ public class TextureLoader {
                 Bitmap bitmap = BitmapFactory.decodeResource(context.getResources(), resourceIdArray[i], options);
 
                 // Load the bitmap into the bound texture.
-                GLUtils.texImage2D(GLES20.GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, bitmap, 0);
+                //GLUtils.texImage2D(GLES20.GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, bitmap, 0);
+                GLUtils.texImage2D(GLES20.GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, GLES20.GL_RGBA, bitmap, 0);
+
                 // Recycle the bitmap, since its data has been loaded into OpenGL.
                 bitmap.recycle();
             }

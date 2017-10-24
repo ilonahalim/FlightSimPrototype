@@ -56,6 +56,7 @@ public class Renderer extends GvrActivity implements GvrView.StereoRenderer{
     private int[] prevQuad;
     private int[] currentQuad;
     private float[] forwardVec;
+    private float[] rotationVec;
     private float[] transposeMatrix;
     private static final float TIME_DELTA = 0.3f;
 
@@ -105,10 +106,12 @@ public class Renderer extends GvrActivity implements GvrView.StereoRenderer{
     private float[] modelView;
     private float[] modelFloor;
     protected float[] modelSkybox;
+    protected float[] modelCockpit;
     private Terrain myTerrain;
     private Terrain[] myTerrainArray;
 
     private SkyBox mySkybox;
+    private Cockpit myCockpit;
     private EndlessTerrain[] myEndlessTerrain;
     private EndlessTerrain endlessTerrain;
     /*
@@ -201,6 +204,9 @@ public class Renderer extends GvrActivity implements GvrView.StereoRenderer{
         modelSkybox = new float[16];
         mySkybox = new SkyBox();
 
+        modelCockpit = new float[16];
+        myCockpit = new Cockpit();
+
         tempPosition = new float[4];
         // Model first appears directly in front of user.
         modelPosition = new float[] {0.0f, 0.0f, -MAX_MODEL_DISTANCE / 2.0f};
@@ -211,6 +217,7 @@ public class Renderer extends GvrActivity implements GvrView.StereoRenderer{
         prevQuad = new int[2];
         currentQuad = new int[2];
         forwardVec = new float[3];
+        rotationVec = new float[3];
         transposeMatrix = new float[16];
         //Matrix.setLookAtM(camera, 0, (float) cameraCoor.x + 512, (float) cameraCoor.y, (float) cameraCoor.z - 512, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f);
         Matrix.setLookAtM(camera, 0, 0, 0, CAMERA_Z, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f);
@@ -314,6 +321,9 @@ public class Renderer extends GvrActivity implements GvrView.StereoRenderer{
         int skyVertexShader = myShaderLoader.loadGLShader(GLES20.GL_VERTEX_SHADER, R.raw.skybox_vertex);
         int skyFragmentShader = myShaderLoader.loadGLShader(GLES20.GL_FRAGMENT_SHADER, R.raw.skybox_fragment);
 
+        int cockpitVertexShader = myShaderLoader.loadGLShader(GLES20.GL_VERTEX_SHADER, R.raw.cockpit_vertex);
+        int cockpitFragmentShader = myShaderLoader.loadGLShader(GLES20.GL_FRAGMENT_SHADER, R.raw.cockpit_fragment);
+
         cubeProgram = GLES20.glCreateProgram();
         GLES20.glAttachShader(cubeProgram, vertexShader);
         GLES20.glAttachShader(cubeProgram, passthroughShader);
@@ -346,6 +356,17 @@ public class Renderer extends GvrActivity implements GvrView.StereoRenderer{
         mySkybox.setUpOpenGl(skyVertexShader, skyFragmentShader, TextureLoader.loadCubeTexture(App.context(), skyResources));
         Matrix.setIdentityM(modelSkybox, 0);
         Matrix.translateM(modelSkybox, 0, modelPosition[0], modelPosition[1], modelPosition[2]);
+
+        int[] cockpitResources = new int[6];
+        cockpitResources[0] = R.drawable.cockpit_left;
+        cockpitResources[1] = R.drawable.cockpit_right;
+        cockpitResources[2] = R.drawable.cockpit_top;
+        cockpitResources[3] = R.drawable.cockpit_top;//bottom
+        cockpitResources[4] = R.drawable.cockpit_back;
+        cockpitResources[5] = R.drawable.cockpit_front;
+        myCockpit.setUpOpenGl(cockpitVertexShader, cockpitFragmentShader, TextureLoader.loadCubeTexture(App.context(), cockpitResources));
+        Matrix.setIdentityM(modelCockpit, 0);
+        Matrix.translateM(modelCockpit, 0, modelPosition[0], modelPosition[1], 0.5f);
 
         //myTerrain.setTexture(loadTexture(this, R.drawable.grass));
         //myTerrain.generateFlatTerrain();
@@ -497,15 +518,29 @@ public class Renderer extends GvrActivity implements GvrView.StereoRenderer{
         //Log.d("ALTITUDE", "altitude = " + altitude + "   forward vec=  " +forwardVec[1]);
         //Log.d(TAG, "On new frame: current pos:" + cameraCoor.x +", " + cameraCoor.z);
         //Log.d(TAG, "On new frame: current quad:" + currentQuad[0] +", " + currentQuad[1]);
-        ////////////headTransform.getForwardVector(forwardVec, 0);
+        headTransform.getForwardVector(forwardVec, 0);
         //forwardVec[0] = 0.5f;
         //if(isCrashLanding(altitude + forwardVec[1])){
         //    resetPosition();
         //}
+        //forwardVec[0] = camera[12];
+        //forwardVec[1] = camera[13];
+        //forwardVec[2] = camera[14];
         if(!isCrashLanding(altitude + forwardVec[1])){
         //else{
+            /*
+            Vector3d forwardVector = new Vector3d();
+            forwardVector.x = forwardVec[0];
+            forwardVector.y = forwardVec[1];
+            forwardVector.z = forwardVec[2];
+            */
+            //forwardVector.normalize();
+            //Matrix.translateM(camera, 0, (float)-forwardVector.x, (float)-forwardVector.y, (float)-forwardVector.z);
+            //Matrix.translateM(modelSkybox, 0, (float)forwardVector.x, (float)forwardVector.y, (float)forwardVector.z);
+            //Matrix.translateM(modelCube, 0, (float)forwardVector.x, (float)forwardVector.y, (float)forwardVector.z);
             Matrix.translateM(camera, 0, -forwardVec[0], -forwardVec[1], -forwardVec[2]);
             Matrix.translateM(modelSkybox, 0, forwardVec[0], forwardVec[1], forwardVec[2]);
+            Matrix.translateM(modelCockpit, 0, forwardVec[0], forwardVec[1], forwardVec[2]);
             Matrix.translateM(modelCube, 0, forwardVec[0], forwardVec[1], forwardVec[2]);
             altitude += forwardVec[1];
             cameraCoor.x += forwardVec[0];
@@ -561,6 +596,7 @@ public class Renderer extends GvrActivity implements GvrView.StereoRenderer{
         Matrix.multiplyMM(modelViewProjection, 0, perspective, 0, modelView, 0);
         mySkybox.drawSkybox(modelViewProjection);
 
+
         // Set modelView for the floor, so we draw floor in the correct location
         Matrix.multiplyMM(modelView, 0, view, 0, modelFloor, 0);
         Matrix.multiplyMM(modelViewProjection, 0, perspective, 0, modelView, 0);
@@ -583,6 +619,9 @@ public class Renderer extends GvrActivity implements GvrView.StereoRenderer{
         }
 
 
+        Matrix.multiplyMM(modelView, 0, view, 0, modelCockpit, 0);
+        Matrix.multiplyMM(modelViewProjection, 0, perspective, 0, modelView, 0);
+        myCockpit.drawCockpit(modelViewProjection);
 
     }
 
@@ -828,8 +867,12 @@ public class Renderer extends GvrActivity implements GvrView.StereoRenderer{
         }
 
         Log.d(TAG, "processJoystickInput: x = " + x +", z = " + z);
-        forwardVec[0]= x;
-        forwardVec[1] = z;
+        //forwardVec[0] += x;
+        //forwardVec[1] += z;
+        rotationVec[0] = x;
+        rotationVec[1] = z;
+        Matrix.rotateM(camera, 0, rotationVec[1], 0.5f, 0.0f, 0f); //pitch
+        Matrix.rotateM(camera, 0, rotationVec[0], 0f, 0.0f, 0.5f); //roll
         // Set the ship heading.
         //setHeading(x, y);
 
