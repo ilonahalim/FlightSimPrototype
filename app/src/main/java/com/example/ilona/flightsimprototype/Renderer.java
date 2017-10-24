@@ -3,6 +3,7 @@ package com.example.ilona.flightsimprototype;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.hardware.input.InputManager;
 import android.opengl.GLES20;
 import android.opengl.GLES30;
 import android.opengl.GLUtils;
@@ -10,6 +11,8 @@ import android.opengl.Matrix;
 import android.os.Vibrator;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.InputDevice;
+import android.view.MotionEvent;
 
 import com.google.vr.sdk.audio.GvrAudioEngine;
 import com.google.vr.sdk.base.AndroidCompat;
@@ -30,10 +33,16 @@ import java.nio.FloatBuffer;
 
 import javax.microedition.khronos.egl.EGLConfig;
 
+import static android.R.attr.forceHasOverlappingRendering;
+import static android.R.attr.logo;
 import static android.R.attr.start;
 import static android.opengl.GLES20.glGetError;
 
 public class Renderer extends GvrActivity implements GvrView.StereoRenderer{
+    //private InputManager myInputManager;
+    private InputDevice myInputDevice;
+    private InputManagerCompat myInputManagerCompat;
+
     protected float[] modelCube;
     protected float[] modelPosition;
 
@@ -132,90 +141,6 @@ public class Renderer extends GvrActivity implements GvrView.StereoRenderer{
     private ShaderLoader myShaderLoader;
 
 
-    public static int loadTexture(Context context, int resourceId)
-    {
-        final int[] textureHandle = new int[1];
-        GLES20.glGenTextures(1, textureHandle, 0);
-
-        if (textureHandle[0] != 0)
-        {
-
-            final BitmapFactory.Options options = new BitmapFactory.Options();
-            options.inScaled = false;   // No pre-scaling
-
-            // Read in the resource
-            final Bitmap bitmap = BitmapFactory.decodeResource(context.getResources(), resourceId, options);
-            //Bitmap bitmap = BitmapFactory.decodeResource(App.context().getResources(), R.drawable.grass);
-
-            // Bind to the texture in OpenGL
-            GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, textureHandle[0]);
-
-            // Set filtering
-            GLES20.glTexParameterf(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MIN_FILTER, GLES20.GL_NEAREST);
-            GLES20.glTexParameterf(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MAG_FILTER, GLES20.GL_LINEAR);
-
-            GLES20.glTexParameterf(GLES20.GL_TEXTURE_2D,
-                    GLES20.GL_TEXTURE_WRAP_S, GLES20.GL_MIRRORED_REPEAT);
-            GLES20.glTexParameterf(GLES20.GL_TEXTURE_2D,
-                    GLES20.GL_TEXTURE_WRAP_T, GLES20.GL_MIRRORED_REPEAT);
-
-            // Load the bitmap into the bound texture.
-            GLUtils.texImage2D(GLES20.GL_TEXTURE_2D, 0, bitmap, 0);
-            checkGLError("Texture");
-            // Recycle the bitmap, since its data has been loaded into OpenGL.
-            bitmap.recycle();
-        }
-
-        if (textureHandle[0] == 0)
-        {
-            throw new RuntimeException("Error loading texture.");
-        }
-
-        return textureHandle[0];
-    }
-
-    public static int loadCubeTexture(Context context, int[] resourceIdArray)
-    {
-        final int[] textureHandle = new int[1];
-        GLES20.glGenTextures(1, textureHandle, 0);
-
-        if (textureHandle[0] != 0)
-        {
-            // Bind to the texture in OpenGL
-            GLES20.glBindTexture(GLES20.GL_TEXTURE_CUBE_MAP, textureHandle[0]);
-
-            GLES20.glTexParameteri(GLES20.GL_TEXTURE_CUBE_MAP, GLES20.GL_TEXTURE_MIN_FILTER, GLES20.GL_LINEAR);
-            GLES20.glTexParameteri(GLES20.GL_TEXTURE_CUBE_MAP, GLES20.GL_TEXTURE_MAG_FILTER, GLES20.GL_LINEAR);
-
-            GLES20.glTexParameteri(GLES20.GL_TEXTURE_CUBE_MAP, GLES20.GL_TEXTURE_WRAP_S, GLES20.GL_CLAMP_TO_EDGE);
-            GLES20.glTexParameteri(GLES20.GL_TEXTURE_CUBE_MAP, GLES20.GL_TEXTURE_WRAP_T, GLES20.GL_CLAMP_TO_EDGE);
-            GLES20.glTexParameteri(GLES20.GL_TEXTURE_CUBE_MAP, GLES30.GL_TEXTURE_WRAP_R, GLES20.GL_CLAMP_TO_EDGE);
-
-
-            for(int i = 0; i<6;i++) {
-                BitmapFactory.Options options = new BitmapFactory.Options();
-                options.inScaled = false;   // No pre-scaling
-
-                // Read in the resource
-                Bitmap bitmap = BitmapFactory.decodeResource(context.getResources(), resourceIdArray[i], options);
-
-                // Load the bitmap into the bound texture.
-                GLUtils.texImage2D(GLES20.GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, bitmap, 0);
-                checkGLError("Texture");
-                // Recycle the bitmap, since its data has been loaded into OpenGL.
-                bitmap.recycle();
-            }
-        }
-
-        if (textureHandle[0] == 0)
-        {
-            throw new RuntimeException("Error loading texture.");
-        }
-
-        return textureHandle[0];
-    }
-
-
 
     /**
      * Checks if we've had an error inside of OpenGL ES, and if so what that error is.
@@ -237,7 +162,8 @@ public class Renderer extends GvrActivity implements GvrView.StereoRenderer{
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-
+        //myInputManager = (InputManager) App.context().getSystemService(Context.INPUT_SERVICE);
+        myInputManagerCompat = new InputManagerCompat(App.context());
         myShaderLoader = new ShaderLoader();
         initializeGvrView();
         modelCube = new float[16];
@@ -417,7 +343,7 @@ public class Renderer extends GvrActivity implements GvrView.StereoRenderer{
         skyResources[3] = R.drawable.bottom;
         skyResources[4] = R.drawable.back;
         skyResources[5] = R.drawable.front;
-        mySkybox.setUpOpenGl(skyVertexShader, skyFragmentShader, loadCubeTexture(App.context(), skyResources));
+        mySkybox.setUpOpenGl(skyVertexShader, skyFragmentShader, TextureLoader.loadCubeTexture(App.context(), skyResources));
         Matrix.setIdentityM(modelSkybox, 0);
         Matrix.translateM(modelSkybox, 0, modelPosition[0], modelPosition[1], modelPosition[2]);
 
@@ -432,7 +358,7 @@ public class Renderer extends GvrActivity implements GvrView.StereoRenderer{
 */
         endlessTerrain.generateFlatTerrain();
         endlessTerrain.setQuadrantIndex(0, 0);
-        endlessTerrain.linkFloorProgram(endlessTerrainVertexShader, endlessTerrainFragmentShader, loadTexture(this, R.drawable.grass));
+        endlessTerrain.linkFloorProgram(endlessTerrainVertexShader, endlessTerrainFragmentShader, TextureLoader.loadTexture(this, R.drawable.grass));
 /*
         endlessTerrain2.generateFlatTerrain();
         endlessTerrain2.setQuadrantIndex(0, -1);
@@ -467,7 +393,7 @@ public class Renderer extends GvrActivity implements GvrView.StereoRenderer{
         endlessTerrain9.linkFloorProgram(endlessTerrainVertexShader, terrainFragmentShader, loadTexture(this, R.drawable.grass));
 */
 
-        int tempTexture = loadTexture(this, R.drawable.grass);
+        int tempTexture = TextureLoader.loadTexture(this, R.drawable.grass);
         for(int i = 0; i< myEndlessTerrain.length; i++){
             myEndlessTerrain[i].generateFlatTerrain();
             myEndlessTerrain[i].linkFloorProgram(endlessTerrainVertexShader, endlessTerrainFragmentShader, tempTexture);
@@ -553,6 +479,9 @@ public class Renderer extends GvrActivity implements GvrView.StereoRenderer{
      */
     @Override
     public void onNewFrame(HeadTransform headTransform) {
+        //myInputDevice = myInputManager.getInputDevice(myInputManager.getInputDeviceIds()[0]);
+        myInputDevice = myInputManagerCompat.getInputDevice(myInputManagerCompat.getInputDeviceIds()[0]);
+        Log.d(TAG, "onNewFrame: Input Device: " + myInputDevice);
         //setCubeRotation();
 
         // Build the camera matrix and apply it to the ModelView.
@@ -568,7 +497,8 @@ public class Renderer extends GvrActivity implements GvrView.StereoRenderer{
         //Log.d("ALTITUDE", "altitude = " + altitude + "   forward vec=  " +forwardVec[1]);
         //Log.d(TAG, "On new frame: current pos:" + cameraCoor.x +", " + cameraCoor.z);
         //Log.d(TAG, "On new frame: current quad:" + currentQuad[0] +", " + currentQuad[1]);
-        headTransform.getForwardVector(forwardVec, 0);
+        ////////////headTransform.getForwardVector(forwardVec, 0);
+        //forwardVec[0] = 0.5f;
         //if(isCrashLanding(altitude + forwardVec[1])){
         //    resetPosition();
         //}
@@ -657,7 +587,16 @@ public class Renderer extends GvrActivity implements GvrView.StereoRenderer{
     }
 
     @Override
-    public void onFinishFrame(Viewport viewport) {}
+    public void onFinishFrame(Viewport viewport) {
+
+        int[] tempViewportData = new int[4];
+        viewport.getAsArray(tempViewportData, 0);
+        tempViewportData[3] += 50;
+        Log.d(TAG, "onFinishFrame: " + viewport.y + ", " + tempViewportData[1]);
+
+        viewport.setViewport(tempViewportData[2], tempViewportData[3], tempViewportData[0], tempViewportData[1]);
+        viewport.setGLViewport();
+    }
 
     /**
      * Draw the cube.
@@ -853,5 +792,99 @@ public class Renderer extends GvrActivity implements GvrView.StereoRenderer{
         totalFrames++;
         //Log.d("TEST", (totalTime / totalFrames) / 1000000 + " ms");
         Log.d("TEST", totalFrames / (totalTime / 1000000000) + " fps");
+    }
+
+    /**
+     * The ship directly handles joystick input.
+     *
+     * @param event
+     * @param historyPos
+     */
+    private void processJoystickInput(MotionEvent event, int historyPos) {
+        // Get joystick position.
+        // Many game pads with two joysticks report the position of the
+        // second
+        // joystick
+        // using the Z and RZ axes so we also handle those.
+        // In a real game, we would allow the user to configure the axes
+        // manually.
+        if (null == myInputDevice) {
+            myInputDevice = event.getDevice();
+        }
+        float x = getCenteredAxis(event, myInputDevice, MotionEvent.AXIS_X, historyPos);
+        if (x == 0) {
+            x = getCenteredAxis(event, myInputDevice, MotionEvent.AXIS_HAT_X, historyPos);
+        }
+        if (x == 0) {
+            x = getCenteredAxis(event, myInputDevice, MotionEvent.AXIS_Z, historyPos);
+        }
+
+        float z = getCenteredAxis(event, myInputDevice, MotionEvent.AXIS_Y, historyPos);
+        if (z == 0) {
+            z = getCenteredAxis(event, myInputDevice, MotionEvent.AXIS_HAT_Y, historyPos);
+        }
+        if (z == 0) {
+            z = getCenteredAxis(event, myInputDevice, MotionEvent.AXIS_RZ, historyPos);
+        }
+
+        Log.d(TAG, "processJoystickInput: x = " + x +", z = " + z);
+        forwardVec[0]= x;
+        forwardVec[1] = z;
+        // Set the ship heading.
+        //setHeading(x, y);
+
+    }
+
+    public boolean onGenericMotionEvent(MotionEvent event) {
+        if ((event.getSource() & InputDevice.SOURCE_JOYSTICK) ==
+                InputDevice.SOURCE_JOYSTICK &&
+                event.getAction() == MotionEvent.ACTION_MOVE) {
+
+            // Process all historical movement samples in the batch
+            final int historySize = event.getHistorySize();
+
+            // Process the movements starting from the
+            // earliest historical position in the batch
+            for (int i = 0; i < historySize; i++) {
+                // Process the event at historical position i
+                processJoystickInput(event, i);
+            }
+
+            // Process the current movement sample in the batch (position -1)
+            processJoystickInput(event, -1);
+            return true;
+        }
+        return dispatchGenericMotionEvent(event);
+    }
+
+    /**
+     * Set the game controller to be used to control the ship.
+     *
+     * @param dev the input device that will be controlling the ship
+     */
+    public void setInputDevice(InputDevice dev) {
+        //mInputDevice = dev;
+    }
+
+    private static float getCenteredAxis(MotionEvent event, InputDevice device,
+                                         int axis, int historyPos) {
+        final InputDevice.MotionRange range = device.getMotionRange(axis, event.getSource());
+        final float value = historyPos < 0 ? event.getAxisValue(axis)
+                : event.getHistoricalAxisValue(axis, historyPos);
+        if (range != null) {
+            final float flat = range.getFlat();
+
+
+            // Ignore axis values that are within the 'flat' region of the
+            // joystick axis center.
+            // A joystick at rest does not always report an absolute position of
+            // (0,0).
+            if (Math.abs(value) > flat) {
+                Log.d(TAG, "getCenteredAxis: value = "+value);
+                return value;
+            }
+        }
+        Log.d(TAG, "getCenteredAxis: value = "+value);
+        return value;
     }
 }
