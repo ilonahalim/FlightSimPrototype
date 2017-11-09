@@ -12,6 +12,7 @@ import android.os.Vibrator;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.InputDevice;
+import android.view.KeyEvent;
 import android.view.MotionEvent;
 
 import com.google.vr.sdk.audio.GvrAudioEngine;
@@ -126,6 +127,7 @@ public class Renderer extends GvrActivity implements GvrView.StereoRenderer{
     Quaternion planeAxis1;
     Quaternion axis1;		                //forwardVector axis quaterion
     Quaternion axis2;		                //horizaontal axis quaternion
+    Quaternion axis3;                       //vertical axis quaternion
 
     double leftFlapAngle = 0;               //angles of the flaps
     double rightFlapAngle = 0;
@@ -185,6 +187,8 @@ public class Renderer extends GvrActivity implements GvrView.StereoRenderer{
 
         axis2 = new Quaternion(0,0,0,0);
         //axis2.fromAxis(forwardVector,0);
+
+        axis3 = new Quaternion(0,0,0,0);
 
         planeAxis1 = new Quaternion(0,0,0,0);
 
@@ -394,19 +398,21 @@ public class Renderer extends GvrActivity implements GvrView.StereoRenderer{
         //myInputDevice = myInputManager.getInputDevice(myInputManager.getInputDeviceIds()[0]);
 
         myInputDevice = myInputManagerCompat.getInputDevice(myInputManagerCompat.getInputDeviceIds()[0]);
-        int[] tempInputDevices = myInputManagerCompat.getInputDeviceIds();
         for(int i = 0; i<myInputManagerCompat.getInputDeviceIds().length; i++){
-            Log.d(TAG, "onNewFrame: Input Device: " + myInputManagerCompat.getInputDevice(myInputManagerCompat.getInputDeviceIds()[i]).getControllerNumber());
+            InputDevice tempDevice = myInputManagerCompat.getInputDevice(myInputManagerCompat.getInputDeviceIds()[i]);
+            if(tempDevice.getControllerNumber() != 0){
+                myInputDevice = tempDevice;
+            }
+            //Log.d(TAG, "onNewFrame: Input Device: " + myInputManagerCompat.getInputDevice(myInputManagerCompat.getInputDeviceIds()[i]).getControllerNumber());
         }
-        //Log.d(TAG, "onNewFrame: Input Device: " + myInputDevice);
+        Log.d(TAG, "onNewFrame: Input Device: " + myInputDevice.getControllerNumber());
 
-        Log.d(TAG, "onNewFrame: Input devices = " +myInputManagerCompat.getInputDeviceIds().length);
+        //Log.d(TAG, "onNewFrame: Input devices = " +myInputManagerCompat.getInputDeviceIds().length);
+        
         //setCubeRotation();
 
         // Build the camera matrix and apply it to the ModelView.
         Matrix.setLookAtM(camera, 0, 0.0f, 0.0f, CAMERA_Z, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f);
-        //Matrix.setLookAtM(camera, 0, (float) cameraCoor.x, (float) cameraCoor.y, CAMERA_Z, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f);
-        //Matrix.translateM(camera, 0, 0, -50, 0);
         headTransform.getHeadView(headView, 0);
 
         // Update the 3d audio engine with the most recent head rotation.
@@ -417,103 +423,34 @@ public class Renderer extends GvrActivity implements GvrView.StereoRenderer{
                 headRotation[0], headRotation[1], headRotation[2], headRotation[3]);
         //Log.d("ALTITUDE", "altitude = " + altitude + "   forward vec=  " +forwardVec[1]);
         //Log.d(TAG, "On new frame: current pos:" + cameraCoor.x +", " + cameraCoor.z);
-        //Log.d(TAG, "On new frame: current quad:" + currentQuad[0] +", " + currentQuad[1]);
+        Log.d(TAG, "On new frame: current quad:" + currentQuad[0] +", " + currentQuad[1]);
         headTransform.getForwardVector(forwardVec, 0);
         forwardVector.set((double)forwardVec[0], (double)forwardVec[1], (double)forwardVec[2]);
         if(isStart) {
             transform.fromAxis(forwardVector,0);
             isStart = false;
         }
-        //Matrix.rotateM(modelCockpit, 0, TIME_DELTA, -headRotation[0], -headRotation[1], -headRotation[2]);
-        //Matrix.rotateM(modelCockpit, 0, TIME_DELTA, (prevHeadRotation[0] - headRotation[0])*headRotation[3], prevHeadRotation[1] - headRotation[1]*headRotation[3], prevHeadRotation[2]*prevHeadRotation[3] - headRotation[2]*headRotation[3]);
-        //Matrix.rotateM(modelCube, 0, TIME_DELTA, headRotation[0] - prevHeadRotation[0], headRotation[1] - prevHeadRotation[1], headRotation[2] - prevHeadRotation[2]);
-        //prevHeadRotation = headRotation;
-        //Matrix.multiplyMV();
-        //forwardVec[0] = 0.5f;
-        //if(isCrashLanding(altitude + forwardVec[1])){
-        //    resetPosition();
-        //}
-        //forwardVec[0] = camera[12];
-        //forwardVec[1] = camera[13];
-        //forwardVec[2] = camera[14];
-
-        if(!isCrashLanding(altitude + forwardVec[1])){
-            /*
-            float x,y,z,w;
-            //if(headEuler[0] - prevHeadEuler[0] != 0 || headEuler[1] - prevHeadEuler[1] != 0 || headEuler[2] - prevHeadEuler[2] != 0) {
-                x = headRotation[0];
-                y = headRotation[1];
-                z = headRotation[2];
-                w = headRotation[3];
-                float magnitude = (float) Math.sqrt(w * w + x * x + y * y + z * z);
-                w = w / magnitude;
-                x = x / magnitude;
-                y = y / magnitude;
-                z = z / magnitude;
-            //}
-            //else{
-            //    x = 0;
-            //    y = 0;
-            //    z = 0;
-            //    w = 0;
-            //}
-            float[] temp1   =   {
-                    w*w + x*x - y*y - z*z,  2*x*y - 2*w*z, 	        2*x*z + 2*w*y,        	forwardVec[0],
-                          2*x*y + 2*w*z, 	      w*w - x*x + y*y - z*z, 	2*y*z + 2*w*x, 	        forwardVec[1],
-                        2*x*z - 2*w*y, 	      2*y*z - 2*w*x, 	        w*w - x*x - y*y + z*z, 	forwardVec[2],
-                      0, 	                  0,                        0,                      1
-                    //1 - 2*y*y - 2*z*z, 2*x*y - 2*z*w, 2*x*z + 2*y*w, forwardVec[0],
-                    //2*x*y + 2*z*w, 1 - 2*x*x - 2*z*z, 	2*y*z - 2*x*w, forwardVec[1],
-                    //2*x*z - 2*y*w, 2*y*z + 2*x*w, 1 - 2*x*x - 2*y*y, forwardVec[2],
-                    //0, 0, 0, 1
-            };
-
-            Matrix.multiplyMV(modelCockpit, 0, modelCockpit, 0, temp1, 0);
-            */
-            /*
-            Matrix.translateM(camera, 0, -forwardVec[0], -forwardVec[1], -forwardVec[2]);
-            Matrix.translateM(modelSkybox, 0, forwardVec[0], forwardVec[1], forwardVec[2]);
-            Matrix.translateM(modelCockpit, 0, forwardVec[0], forwardVec[1], forwardVec[2]);
-            altitude += forwardVec[1];
-            cameraCoor.x += forwardVec[0];
-            cameraCoor.y += forwardVec[1];
-            cameraCoor.z += forwardVec[2];
-            Log.d(TAG, "On new frame: current pos:" + cameraCoor.x +", " + cameraCoor.z);
-            Log.d(TAG, "On new frame: current quad:" + currentQuad[0] +", " + currentQuad[1]);
-            if(isQuadChange()){
-                //handleQuadChange();
-                //endlessTerrain.setQuadrantIndex(currentQuad[0], currentQuad[1]);
-            }
-            */
-
+        if(myInputDevice.getControllerNumber() == 0){
+            transform.fromAxis(forwardVector,0);
+            Quaternion headQuaternion = new Quaternion(headRotation[0], headRotation[1], headRotation[2], headRotation[3]);
+            //headQuaternion.normalise();
+            //transform.normalise();
+            //transform.multiplyQuatWith(headQuaternion);
+            transform = transform.multiplyQuatWith(headQuaternion);
+            Log.d(TAG, "onNewFrame: rotate with head angle = " + headQuaternion.getAngle());
         }
 
-        //Matrix.translateM(modelCockpit, 0, forwardVec[0]*headRotation[0], forwardVec[1]*headRotation[1], forwardVec[2]*headRotation[0]);
-        //Matrix.rotateM(modelCockpit, 0, TIME_DELTA, headRotation[0], headRotation[1], headRotation[2]);
-
-        //Matrix.translateM(modelCockpit, 0, planePos[0], planePos[1], planePos[2]);
-        //Matrix.multiplyMM(modelCockpit, 0, transform.getMatrix(), 0, modelCockpit, 0);
         updatePlanePos();
         updateCamera();
+        Log.d(TAG, "onNewFrame: rotate with angle = " + transform.getAngle());
 
-
-        if(headEuler[0] - prevHeadEuler[0] != 0 || headEuler[1] - prevHeadEuler[1] != 0 || headEuler[2] - prevHeadEuler[2] != 0) {
-            //Matrix.rotateM(modelCockpit, 0, -headRotation[0], 1f, 0, 0);
-            //Matrix.rotateM(modelCockpit, 0, -headRotation[1], 0, 1f, 0);
-            //Matrix.rotateM(modelCockpit, 0, -headRotation[2], 0, 0, 1f);
-            //Matrix.rotateM(modelCockpit, 0, TIME_DELTA, 0.1f, 0, 0);
-            //Matrix.rotateM(modelCockpit, 0, TIME_DELTA, -headRotation[0], -headRotation[1], -headRotation[2]);
-            //Matrix.rotateM(modelCockpit, 0, TIME_DELTA, (prevHeadRotation[0] - headRotation[0])*headRotation[3], prevHeadRotation[1] - headRotation[1]*headRotation[3], prevHeadRotation[2]*prevHeadRotation[3] - headRotation[2]*headRotation[3]);
-            //Matrix.rotateM(modelCockpit, 0, TIME_DELTA, headRotation[0] - prevHeadRotation[0], headRotation[1] - prevHeadRotation[1], headRotation[2] - prevHeadRotation[2]);
-        }
         prevHeadRotation = headRotation;
         prevHeadEuler = headEuler;
-        //Log.d("NEW FRAME", "Z = " + cameraCoor.z + "   forward Z=  " +forwardVec[2]);
+
         // Regular update call to GVR audio engine.
         gvrAudioEngine.update();
 
         checkGLError("onReadyToDraw");
-        checkSpeed();
     }
 
 
@@ -623,8 +560,10 @@ public class Renderer extends GvrActivity implements GvrView.StereoRenderer{
             }
         }
         */
-        currentQuad[0] = (int) Math.round(cameraCoor.x/512);
-        currentQuad[1] = (int) Math.round(cameraCoor.z/512);
+        //currentQuad[0] = (int) Math.round(cameraCoor.x/512);
+        //currentQuad[1] = (int) Math.round(cameraCoor.z/512);
+        currentQuad[0] = (int) Math.round(planePos[2]/512);
+        currentQuad[1] = (int) Math.round(planePos[0]/512);
         if (currentQuad[0] != prevQuad[0] || currentQuad[1] != prevQuad[1]){
             return true;
         }
@@ -705,23 +644,23 @@ public class Renderer extends GvrActivity implements GvrView.StereoRenderer{
         }
 
         Log.d(TAG, "processJoystickInput: x = " + x +", z = " + z);
-        //forwardVec[0] += x;
-        //forwardVec[1] += z;
-        //rotationVec[0] = x;
-        //rotationVec[1] = z;
-        //Matrix.rotateM(camera, 0, rotationVec[1], 1f, 0.0f, 0f); //pitch
-        //Matrix.rotateM(camera, 0, rotationVec[0], 0f, 0.0f, 1f); //roll
-        //Matrix.rotateM(modelCockpit, 0, rotationVec[1], 1f, 0.0f, 0f); //pitch
-        //Matrix.rotateM(modelCockpit, 0, rotationVec[0], 0f, 0.0f, 1f); //roll
-        // Set the ship heading.
-        //setHeading(x, y);
-        //forwardVector = Vector3D(0,0,1);  //load base forwardVector vector
-        float[] temp = new float[16];
-        //float tempAngle = (float) rotationRate;
         float tempAngle = (float) Math.toDegrees(rotationRate);
-        x =0;
+        if (x < 0){
+            barrel.set(0,1,0);
+            axis3.fromAxis(barrel, angle2up);	//set rotation axis, angle
+            axis3.normalise();					//normalize the quaternions
+            transform.normalise();
+            transform =  transform.multiplyQuatWith(axis3);
+        }
+        else if (x > 0){
+            barrel.set(0,1,0);
+            axis3.fromAxis(barrel, angle2down);	//set rotation axis, angle
+            axis3.normalise();					//normalize the quaternions
+            transform.normalise();
+            transform =  transform.multiplyQuatWith(axis3);
+        }
+        /*x =0;
         if(z>0) {
-
             //transform.fromAxis(forwardVector,0);
             //forwardVector = Vector3d(0,0,1);   //set base vectors
             barrel.set(1,0,0);
@@ -746,8 +685,6 @@ public class Renderer extends GvrActivity implements GvrView.StereoRenderer{
             transform =  transform.multiplyQuatWith(axis2);
 
             planeRotationAngle[0] -= tempAngle;
-            //Matrix.setRotateM(temp, 0, (float) -tempAngle, 0, 0, 1);
-            //Matrix.multiplyMM(planeRotationMatrix, 0, temp, 0, planeRotationMatrix, 0);
             Log.d(TAG, "processJoystickInput: rotate down " + planeRotationAngle[0]);
         }
         if(x<0) {
@@ -772,11 +709,96 @@ public class Renderer extends GvrActivity implements GvrView.StereoRenderer{
             planeRotationAngle[2] -= tempAngle;
             Log.d(TAG, "processJoystickInput: rotate " + planeRotationAngle[2]);
         }
+        */
         //Log.d(TAG, "processJoystickInput: angle= " + Math.toDegrees(planeRotationAngle[2]));
 
     }
 
+    @Override
+    public boolean dispatchKeyEvent(KeyEvent event) {
+        if (event.getKeyCode() == KeyEvent.KEYCODE_BUTTON_Y){ //Labelled button A in MOKE controller
+            Log.d(TAG, "dispatchKeyEvent: BUTTON A");
+            barrel.set(1,0,0);
+            axis2.fromAxis(barrel, angle2up);	//set rotation axis, angle
+            axis2.normalise();					//normalize the quaternions
+            transform.normalise();
+            transform =  transform.multiplyQuatWith(axis2);
+
+            //planeRotationAngle[0] += tempAngle;
+            Log.d(TAG, "processJoystickInput: rotate up");
+        }
+        else if (event.getKeyCode() == KeyEvent.KEYCODE_BUTTON_A){ //Labelled button B in MOKE controller
+            Log.d(TAG, "dispatchKeyEvent: BUTTON B");
+            barrel.set(1,0,0);
+            axis2.fromAxis(barrel, angle2down);	//set rotation axis, angle
+            axis2.normalise();					//normalize the quaternions
+            transform.normalise();
+            transform =  transform.multiplyQuatWith(axis2);
+
+            //planeRotationAngle[0] -= tempAngle;
+            Log.d(TAG, "processJoystickInput: rotate down");
+        }
+        else if (event.getKeyCode() == KeyEvent.KEYCODE_BUTTON_X){ //Labelled button C in MOKE controller
+            Log.d(TAG, "dispatchKeyEvent: BUTTON C");
+            barrel = new Vector3d(-1, 0, 0);  //load baase horizaontal vector
+            axis1.fromAxis(forwardVector, angleDown);     //set quaternion about forwardVector vector, set angle
+            barrel = axis1.multiplyQuatWith(barrel);   //apply quaternion to the barrel vector
+            axis1.normalise();                    //normalize the quaternions
+            transform.normalise();
+            transform = transform.multiplyQuatWith(axis1);
+
+            //planeRotationAngle[2] += tempAngle;
+            Log.d(TAG, "processJoystickInput: rotate " + planeRotationAngle[2]);
+        }
+        else if (event.getKeyCode() == KeyEvent.KEYCODE_BUTTON_B){ //Labelled button D in MOKE controller
+            Log.d(TAG, "dispatchKeyEvent: BUTTON D");
+            barrel = new Vector3d(1, 0, 0);  //load baase horizaontal vector
+            axis1.fromAxis(forwardVector, angleUp);     //set quaternion about forwardVector vector, set angle
+            barrel = axis1.multiplyQuatWith(barrel);   //apply quaternion to the barrel vector
+            axis1.normalise();                    //normalize the quaternions
+            transform.normalise();
+            transform = transform.multiplyQuatWith(axis1);
+
+            //planeRotationAngle[2] -= tempAngle;
+            Log.d(TAG, "processJoystickInput: rotate " + planeRotationAngle[2]);
+        }
+        else if (event.getKeyCode() == KeyEvent.KEYCODE_BUTTON_A){
+            speed += .2;
+        }
+        else if (event.getKeyCode() == KeyEvent.KEYCODE_BUTTON_B){
+            speed -= .02;
+        }
+        else {
+            Log.d(TAG, "dispatchKeyEvent: keycode = " + event.getKeyCode());
+        }
+
+        return true; //hides controller's in built events from android so app doesn't close on B button
+    }
+
+    @Override
     public boolean onGenericMotionEvent(MotionEvent event) {
+        if ((event.getSource() & InputDevice.SOURCE_JOYSTICK) ==
+                InputDevice.SOURCE_JOYSTICK &&
+                event.getAction() == MotionEvent.ACTION_MOVE) {
+
+            // Process all historical movement samples in the batch
+            final int historySize = event.getHistorySize();
+
+            // Process the movements starting from the
+            // earliest historical position in the batch
+            for (int i = 0; i < historySize; i++) {
+                // Process the event at historical position i
+                processJoystickInput(event, i);
+            }
+
+            // Process the current movement sample in the batch (position -1)
+            processJoystickInput(event, -1);
+            return true;
+        }
+        return super.onGenericMotionEvent(event);
+    }
+/*
+    public boolean dispatchGenericMotionEvent(MotionEvent event) {
         if ((event.getSource() & InputDevice.SOURCE_JOYSTICK) ==
                 InputDevice.SOURCE_JOYSTICK &&
                 event.getAction() == MotionEvent.ACTION_MOVE) {
@@ -797,7 +819,7 @@ public class Renderer extends GvrActivity implements GvrView.StereoRenderer{
         }
         return dispatchGenericMotionEvent(event);
     }
-
+*/
     /**
      * Set the game controller to be used to control the ship.
      *
@@ -882,6 +904,9 @@ public class Renderer extends GvrActivity implements GvrView.StereoRenderer{
         Matrix.setIdentityM(modelCockpit, 0);
 
         Matrix.multiplyMM(modelCockpit, 0, transform.getTranslatedMatrix(planePos[0], planePos[1], planePos[2]), 0, modelCockpit, 0);
+
+        currentQuad[0] = (int) Math.round(planePos[2]/512);
+        currentQuad[1] = (int) Math.round(planePos[0]/512);
         /*
         Log.d(TAG, "updatePlanePos: -----------------------------------------------------------------------------");
         Log.d(TAG, "updatePlanePos: ("+planePos[0]+", "+planePos[1]+", "+planePos[2]+")");
