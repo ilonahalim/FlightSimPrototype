@@ -1,12 +1,7 @@
 package com.example.ilona.flightsimprototype;
 
 import android.content.Context;
-import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
-import android.hardware.input.InputManager;
 import android.opengl.GLES20;
-import android.opengl.GLES30;
-import android.opengl.GLUtils;
 import android.opengl.Matrix;
 import android.os.Vibrator;
 import android.os.Bundle;
@@ -24,20 +19,8 @@ import com.google.vr.sdk.base.HeadTransform;
 import com.google.vr.sdk.base.Viewport;
 import com.google.vr.sdk.base.sensors.internal.Vector3d;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
-import java.nio.FloatBuffer;
-
 import javax.microedition.khronos.egl.EGLConfig;
 
-import static android.R.attr.forceHasOverlappingRendering;
-import static android.R.attr.logo;
-import static android.R.attr.mode;
-import static android.R.attr.start;
 import static android.opengl.GLES20.glGetError;
 
 public class Renderer extends GvrActivity implements GvrView.StereoRenderer{
@@ -50,7 +33,7 @@ public class Renderer extends GvrActivity implements GvrView.StereoRenderer{
     private static final String TAG = "Renderer";
 
     private static final float Z_NEAR = 0.1f;
-    private static final float Z_FAR = 100.0f;
+    private static final float Z_FAR = 1000.0f;
 
     private static final float CAMERA_Z = 5.501f;
     private Vector3d cameraCoor;
@@ -96,6 +79,7 @@ public class Renderer extends GvrActivity implements GvrView.StereoRenderer{
 
     private SkyBox mySkybox;
     private Cockpit myCockpit;
+    private ModelCockpit myModelCockpit;
     private EndlessTerrain[] myEndlessTerrain;
     private EndlessTerrain endlessTerrain;
 
@@ -219,6 +203,7 @@ public class Renderer extends GvrActivity implements GvrView.StereoRenderer{
 
         modelCockpit = new float[16];
         myCockpit = new Cockpit();
+        myModelCockpit = new ModelCockpit();
 
         tempPosition = new float[4];
         // Model first appears directly in front of user.
@@ -318,6 +303,9 @@ public class Renderer extends GvrActivity implements GvrView.StereoRenderer{
         int cockpitVertexShader = myShaderLoader.loadGLShader(GLES20.GL_VERTEX_SHADER, R.raw.cockpit_vertex);
         int cockpitFragmentShader = myShaderLoader.loadGLShader(GLES20.GL_FRAGMENT_SHADER, R.raw.cockpit_fragment);
 
+        int textureVertexShader = myShaderLoader.loadGLShader(GLES20.GL_VERTEX_SHADER, R.raw.textured_model_vertex);
+        int textureFragmentShader = myShaderLoader.loadGLShader(GLES20.GL_FRAGMENT_SHADER, R.raw.textured_model_fragment);
+
         Matrix.setIdentityM(modelFloor, 0);
         Matrix.translateM(modelFloor, 0, 0, -floorDepth, 0); // Floor appears below user.
 
@@ -340,7 +328,14 @@ public class Renderer extends GvrActivity implements GvrView.StereoRenderer{
         cockpitResources[4] = R.drawable.cockpit_front;
         cockpitResources[5] = R.drawable.cockpit_back;
         myCockpit.setUpOpenGl(cockpitVertexShader, cockpitFragmentShader, TextureLoader.loadCubeTexture(App.context(), cockpitResources));
+        ObjLoader objLoader = new ObjLoader();
+        objLoader.readObjFile2(R.raw.retexturedcockpit2);
+        //objLoader.readObjFile(R.raw.tree);
+        myModelCockpit.setResources(objLoader, R.drawable.textureatlas_2);
+        myModelCockpit.setUpOpenGl(textureVertexShader, textureFragmentShader);
+
         Matrix.setIdentityM(modelCockpit, 0);
+
         //Matrix.translateM(modelCockpit, 0, modelPosition[0], modelPosition[1], modelPosition[2]);
         //Matrix.translateM(modelCockpit, 0, planePos[0], planePos[1], planePos[2]+5);
 
@@ -431,13 +426,13 @@ public class Renderer extends GvrActivity implements GvrView.StereoRenderer{
             isStart = false;
         }
         if(myInputDevice.getControllerNumber() == 0){
-            transform.fromAxis(forwardVector,0);
-            Quaternion headQuaternion = new Quaternion(headRotation[0], headRotation[1], headRotation[2], headRotation[3]);
+            //transform.fromAxis(forwardVector,0);
+            //Quaternion headQuaternion = new Quaternion(headRotation[0], headRotation[1], headRotation[2], headRotation[3]);
             //headQuaternion.normalise();
             //transform.normalise();
             //transform.multiplyQuatWith(headQuaternion);
-            transform = transform.multiplyQuatWith(headQuaternion);
-            Log.d(TAG, "onNewFrame: rotate with head angle = " + headQuaternion.getAngle());
+            //transform = transform.multiplyQuatWith(headQuaternion);
+            //Log.d(TAG, "onNewFrame: rotate with head angle = " + headQuaternion.getAngle());
         }
 
         updatePlanePos();
@@ -488,15 +483,14 @@ public class Renderer extends GvrActivity implements GvrView.StereoRenderer{
         // Set modelView for the floor, so we draw floor in the correct location
         Matrix.multiplyMM(modelView, 0, view, 0, modelFloor, 0);
         Matrix.multiplyMM(modelViewProjection, 0, perspective, 0, modelView, 0);
-
-
         for(int i = 0; i< myEndlessTerrain.length; i++){
             myEndlessTerrain[i].drawFloor(lightPosInEyeSpace, modelView, modelViewProjection, currentQuad);
         }
 
         Matrix.multiplyMM(modelView, 0, view, 0, modelCockpit, 0);
         Matrix.multiplyMM(modelViewProjection, 0, perspective, 0, modelView, 0);
-        myCockpit.drawCockpit(modelViewProjection);
+        //myCockpit.drawCockpit(modelViewProjection);
+        myModelCockpit.draw(lightPosInEyeSpace, modelView, modelViewProjection);
 
     }
 
@@ -797,29 +791,7 @@ public class Renderer extends GvrActivity implements GvrView.StereoRenderer{
         }
         return super.onGenericMotionEvent(event);
     }
-/*
-    public boolean dispatchGenericMotionEvent(MotionEvent event) {
-        if ((event.getSource() & InputDevice.SOURCE_JOYSTICK) ==
-                InputDevice.SOURCE_JOYSTICK &&
-                event.getAction() == MotionEvent.ACTION_MOVE) {
 
-            // Process all historical movement samples in the batch
-            final int historySize = event.getHistorySize();
-
-            // Process the movements starting from the
-            // earliest historical position in the batch
-            for (int i = 0; i < historySize; i++) {
-                // Process the event at historical position i
-                processJoystickInput(event, i);
-            }
-
-            // Process the current movement sample in the batch (position -1)
-            processJoystickInput(event, -1);
-            return true;
-        }
-        return dispatchGenericMotionEvent(event);
-    }
-*/
     /**
      * Set the game controller to be used to control the ship.
      *
@@ -893,16 +865,15 @@ public class Renderer extends GvrActivity implements GvrView.StereoRenderer{
         move.normalize(); //normalize the vector
 
         if(planePos[1]+ move.y * speed > 0) {
-            planePos[0] = (float) (planePos[0] + move.x * speed);  //updeate the position by adding a factor
-            planePos[1] = (float) (planePos[1] + move.y * speed);    //of the direction components
-            planePos[2] = (float) (planePos[2] + move.z * speed);
+            //planePos[0] = (float) (planePos[0] + move.x * speed);  //updeate the position by adding a factor
+            //planePos[1] = (float) (planePos[1] + move.y * speed);    //of the direction components
+            //planePos[2] = (float) (planePos[2] + move.z * speed);
+            //Matrix.translateM(modelSkybox, 0, (float) (move.x*speed), (float) (move.y * speed),  (float) (move.z * speed));
         }
-
-
-        Matrix.translateM(modelSkybox, 0, (float) (move.x*speed), (float) (move.y * speed),  (float) (move.z * speed));
 
         Matrix.setIdentityM(modelCockpit, 0);
 
+        //Matrix.rotateM(modelCockpit, 0, 180, 0, 1, 0);
         Matrix.multiplyMM(modelCockpit, 0, transform.getTranslatedMatrix(planePos[0], planePos[1], planePos[2]), 0, modelCockpit, 0);
 
         currentQuad[0] = (int) Math.round(planePos[2]/512);
