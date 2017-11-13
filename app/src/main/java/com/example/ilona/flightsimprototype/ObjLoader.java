@@ -31,6 +31,9 @@ public class ObjLoader {
     public float[] textureArray;
     public short[] indicesArray;
 
+    public float min = 100;
+    public float max = -2;
+
     public ObjLoader(){
         vertices = new Vector<>();
         normals = new Vector<>();
@@ -88,6 +91,10 @@ public class ObjLoader {
             verticesArray[vertexPointer++] = vertex[0];
             verticesArray[vertexPointer++] = vertex[1];
             verticesArray[vertexPointer++] = vertex[2];
+            if(vertex[0] < min)
+                min = vertex[0];
+            if(vertex[0]>max)
+                max = vertex[0];
         }
 
         for(int i=0;i<indices.size();i++){

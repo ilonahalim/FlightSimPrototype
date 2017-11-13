@@ -19,7 +19,7 @@ import static android.opengl.GLES20.glGetError;
 
 
 public class EndlessTerrain{
-    private static final String TAG = "ENDLESS TERRAIN";
+    private static final String TAG = "ENDLESS TERRAIN test";
     private int VERTEX_COUNT = 128;
     private int SIZE = 512;
     private int MAX_HEIGHT = 80;
@@ -69,7 +69,7 @@ public class EndlessTerrain{
     public EndlessTerrain(){
         quadrantIndex = new int[2];
         hGen = new HeightGenerator();
-        bitmap = BitmapFactory.decodeResource(App.context().getResources(), R.drawable.heightmap);
+        bitmap = BitmapFactory.decodeResource(App.context().getResources(), R.drawable.heightmap2);
         modelFloor = new float[20];
         count = VERTEX_COUNT * VERTEX_COUNT;
         vertices = new float[count * 3];
@@ -146,11 +146,17 @@ public class EndlessTerrain{
         for(int i=0;i<VERTEX_COUNT;i++){
             for(int j=0;j<VERTEX_COUNT;j++){
                 vertices[vertexPointer*3] = (float)j/((float)VERTEX_COUNT - 1) * SIZE - SIZE/2;
-                vertices[vertexPointer*3+1] = 0;
+                vertices[vertexPointer*3+1] = getHeight(j, i);
                 vertices[vertexPointer*3+2] = (float)i/((float)VERTEX_COUNT - 1) * SIZE - SIZE/2;
-                normals[vertexPointer*3] = 1;
-                normals[vertexPointer*3+1] = 1;
-                normals[vertexPointer*3+2] = 1;
+                Log.d(TAG, "generateFlatTerrain: height generated = "+ vertices[vertexPointer*3+1]);
+
+                Vector3d normalVec = calcNormal(i, j);
+                normals[vertexPointer*3] = (float) normalVec.x;
+                normals[vertexPointer*3+1] = (float) normalVec.y;
+                normals[vertexPointer*3+2] = (float) normalVec.z;
+                //normals[vertexPointer*3] = 1;
+                //normals[vertexPointer*3+1] = 1;
+                //normals[vertexPointer*3+2] = 1;
                 colors[vertexPointer*4] = 1.0f;
                 colors[vertexPointer*4+1] = 0.6523f;
                 colors[vertexPointer*4+2] = 0.0f;
@@ -221,8 +227,8 @@ public class EndlessTerrain{
         //floorQuadrantParam = GLES20.glGetAttribLocation(floorProgram, "u_Quadrant");
     }
 
-    private float getHeight(int x, int z, HeightGenerator gen){
-        /*
+    private float getHeight(int x, int z){
+
         if (x<0 || x>=bitmap.getHeight() || z<0 || z>= bitmap.getWidth()){
             return 0;
         }
@@ -231,15 +237,13 @@ public class EndlessTerrain{
         height /= MAX_PIXEL_COLOR/2f;
         height *= MAX_HEIGHT;
         return height;
-        */
-        return gen.generateHeight(x, z);
     }
 
-    private Vector3d calcNormal(int x, int z, HeightGenerator gen){
-        float heightL = getHeight(x-1, z, gen);
-        float heightR = getHeight(x+1, z, gen);
-        float heightD = getHeight(x, z-1, gen);
-        float heightU = getHeight(x, z+1, gen);
+    private Vector3d calcNormal(int x, int z){
+        float heightL = getHeight(x-1, z);
+        float heightR = getHeight(x+1, z);
+        float heightD = getHeight(x, z-1);
+        float heightU = getHeight(x, z+1);
         Vector3d normal = new Vector3d(heightL-heightR, 2f, heightD-heightU);
         normal.normalize();
         return normal;

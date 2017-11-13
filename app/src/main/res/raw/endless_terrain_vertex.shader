@@ -22,8 +22,8 @@ void main()
 {
     // Transform the vertex into eye space.
     vec4 tempPos = a_Position;
-    tempPos.x = tempPos.x + u_Quadrant.x * 512.0;
-    tempPos.z = tempPos.z + u_Quadrant.y * 512.0;
+    tempPos.x = tempPos.x + u_Quadrant.x * 60.8294;
+    tempPos.z = tempPos.z + u_Quadrant.y * 60.8294;
     //v_Position = vec3(a_Position);
     v_Position = vec3(tempPos);
 
