@@ -33,6 +33,8 @@ public class ObjLoader {
 
     public float min = 100;
     public float max = -2;
+    public int vertexCount = 0;
+    public float gridSize = 0;
 
     public ObjLoader(){
         vertices = new Vector<>();
@@ -95,6 +97,9 @@ public class ObjLoader {
                 min = vertex[0];
             if(vertex[0]>max)
                 max = vertex[0];
+            vertexCount++;
+            gridSize = vertex[0] - gridSize;
+            Log.d(TAG, "readObjFile2: gridSize = " + gridSize);
         }
 
         for(int i=0;i<indices.size();i++){

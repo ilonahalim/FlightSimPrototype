@@ -65,6 +65,7 @@ public class ModelTerrain {
         float min = objLoader.min;
         float max = objLoader.max;
         Log.d(TAG, "setResources: terrain size = " + (max-min) + " max = " + max + " min = " + min);
+        Log.d(TAG, "setResources: vertex count = " + objLoader.vertexCount + " grid size = " + objLoader.gridSize);
 
         ByteBuffer bbVertices = ByteBuffer.allocateDirect(verticesArray.length * 4);
         bbVertices.order(ByteOrder.nativeOrder());

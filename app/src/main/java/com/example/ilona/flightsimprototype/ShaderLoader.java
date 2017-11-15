@@ -54,13 +54,6 @@ public class ShaderLoader {
      */
     public String readRawTextFile(int resId) {
         InputStream inputStream = App.context().getResources().openRawResource(resId);
-        //AssetManager assetManager = getClass().getResourceAsStream(filePath);
-        //InputStream inputStream = getClass().getResourceAsStream(filePath);
-        /*try {
-            inputStream = assetManager.open(filePath);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }*/
         try {
             BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
             StringBuilder sb = new StringBuilder();
