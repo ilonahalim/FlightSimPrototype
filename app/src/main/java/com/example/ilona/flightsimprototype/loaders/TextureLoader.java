@@ -7,10 +7,21 @@ import android.opengl.GLES20;
 import android.opengl.GLES30;
 import android.opengl.GLUtils;
 
+/**
+ * Class: TextureLoader
+ * Author: Ilona
+ *
+ * The purpose of this class is to load images into textures that openGL can use to texture models.
+ * This class will be needed by all classes in model package.
+ */
+
+
 
 public class TextureLoader {
-    public TextureLoader(){}
-
+    /**
+     * Reads an image and convert it to OpenGl texture 2D.
+     *
+     */
     public static int loadTexture(Context context, int resourceId)
     {
         final int[] textureHandle = new int[1];
@@ -24,7 +35,7 @@ public class TextureLoader {
 
             // Read in the resource
             final Bitmap bitmap = BitmapFactory.decodeResource(context.getResources(), resourceId, options);
-            //Bitmap bitmap = BitmapFactory.decodeResource(App.context().getResources(), R.drawable.grass);
+            //Bitmap bitmap = BitmapFactory.decodeResource(App.context().getResources(), R.drawable.play_day_terrain);
 
             // Bind to the texture in OpenGL
             GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, textureHandle[0]);
@@ -52,6 +63,10 @@ public class TextureLoader {
         return textureHandle[0];
     }
 
+    /**
+     * Reads an array of images and convert it to OpenGl cubemap texture.
+     *
+     */
     public static int loadCubeTexture(Context context, int[] resourceIdArray)
     {
         final int[] textureHandle = new int[1];

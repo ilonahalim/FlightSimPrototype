@@ -13,22 +13,21 @@ import java.io.InputStreamReader;
 import static com.google.vr.ndk.base.Version.TAG;
 
 /**
- * Created by Ilona on 20-Sep-17.
+ * Class: ShaderLoader
+ * Author: Ilona
+ * <p> A class to read shader text files, convert it to String,
+ * then save it as an openGl shader.</>
  */
 
 public class ShaderLoader {
 
-    public ShaderLoader(){
-
-    }
-
     /**
-     * Converts a raw text file into a string.
+     * Reads and convert a text file into a string.
      *
      * @param resId The resource ID of the raw text file about to be turned into a shader.
-     * @return The context of the text file, or null in case of error.
+     * @return The contents of the text file, or null in case of error.
      */
-    public String readRawTextFile(int resId) {
+    private String readTextFile(int resId) {
         InputStream inputStream = App.context().getResources().openRawResource(resId);
         try {
             BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
@@ -47,14 +46,14 @@ public class ShaderLoader {
     }
 
     /**
-     * Converts a raw text file, saved as a resource, into an OpenGL ES shader.
+     * Converts a shader text file into an OpenGL ES shader.
      *
      * @param type The type of shader we will be creating.
      * @param resId The resource ID of the raw text file about to be turned into a shader.
      * @return The shader object handler.
      */
     public int loadGLShader(int type, int resId) {
-        String code = readRawTextFile(resId);
+        String code = readTextFile(resId);
         int shader = GLES20.glCreateShader(type);
         GLES20.glShaderSource(shader, code);
         GLES20.glCompileShader(shader);

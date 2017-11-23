@@ -1,20 +1,12 @@
-attribute vec4 a_Position;
+attribute vec4 a_Position; // The vertex coordinate information.
 
-varying vec3 v_TexCoordinates;
+varying vec3 v_TexCoordinates; // The texture coordinate.
 
-uniform mat4 u_MVP;
+uniform mat4 u_MVP; // The model view matrix.
 
 void main()
 {
+    v_TexCoordinates = normalize(a_Position.xyz); // Generate the UV coordinates
 
-//4. Generate the UV coordinates
-
-v_TexCoordinates=normalize(a_Position.xyz);
-
-//5. transform every position vertex by the model-view-projection matrix
-
-gl_Position=u_MVP * a_Position;
-
-gl_Position=gl_Position.xyww;
-
+    gl_Position = (u_MVP * a_Position).xyww; // Set vertex position.
 }

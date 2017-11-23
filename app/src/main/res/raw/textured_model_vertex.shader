@@ -1,30 +1,23 @@
-uniform mat4 u_Model;
-uniform mat4 u_MVMatrix;
-uniform mat4 u_MVPMatrix;
-uniform vec3 u_LightPos;
+uniform mat4 u_Model; // The model transformation matrix.
+uniform mat4 u_MVMatrix; // The model view matrix.
+uniform mat4 u_MVPMatrix; // The model view projection matrix.
+uniform vec3 u_LightPos; // The light direction.
 
-attribute vec4 a_Position;      // Per-vertex position information we will pass in.
-attribute vec3 a_Normal;        // Per-vertex normal information we will pass in.
-attribute vec2 a_TexCoordinate; // Per-vertex texture coordinate information we will pass in.
+attribute vec4 a_Position;      // Per-vertex position information to be passed.
+attribute vec3 a_Normal;        // Per-vertex normal information we to be passed.
+attribute vec2 a_TexCoordinate; // Per-vertex texture coordinate information to be passed.
 
-varying vec3 v_Position;        // This will be passed into the fragment shader.
-varying vec3 v_Normal;          // This will be passed into the fragment shader.
-varying vec2 v_TexCoordinate;   // This will be passed into the fragment shader.
+varying vec3 v_Position;        // To be passed into the fragment shader.
+varying vec3 v_Normal;          // To be passed into the fragment shader.
+varying vec2 v_TexCoordinate;   // To be passed into the fragment shader.
 
-// The entry point for our vertex shader.
 void main()
 {
-    // Transform the vertex into eye space.
-    v_Position = vec3(a_Position);
+    v_Position = vec3(a_Position); // Transform the vertex into eye space.
 
+    v_TexCoordinate = a_TexCoordinate; // Pass through the texture coordinate.
 
-    // Pass through the texture coordinate.
-    v_TexCoordinate = a_TexCoordinate;
+    v_Normal = vec3(u_MVMatrix * vec4(a_Normal, 0.0)); // Transform the normal's orientation into eye space.
 
-    // Transform the normal's orientation into eye space.
-    v_Normal = vec3(u_MVMatrix * vec4(a_Normal, 0.0));
-
-    // gl_Position is a special variable used to store the final position.
-    // Multiply the vertex by the matrix to get the final point in normalized screen coordinates.
-    gl_Position = u_MVPMatrix * a_Position;
+    gl_Position = u_MVPMatrix * a_Position; // Set vertex position.
 }

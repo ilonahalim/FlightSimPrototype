@@ -3,19 +3,20 @@ package com.example.ilona.flightsimprototype.models;
 import android.opengl.GLES11;
 import android.opengl.GLES20;
 import android.opengl.Matrix;
-import android.util.Log;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
 
 /**
- * Created by Ilona on 17-Nov-17.
+ * Class: Quad
+ * Author: Ilona
+ * <p> The purpose of this class is to create a textured quad
+ * to be used for titles, instructions, credits and menu options.
+ * It uses the quad vertex & fragment shader. .</>
  */
 
 public class Quad {
-    private static final String TAG = "GUI";
-
     private int program;
 
     private int positionParam;
@@ -27,45 +28,44 @@ public class Quad {
     private float[] positionArray;
     private float[] textureCoordsArray;
     private float[] offsetArray;
-    private int textureID;
+    private int textureHandle;
 
     private FloatBuffer positions;
     private FloatBuffer textureCoords;
 
-    float[] transformationMatrix;
-    float[] modelView;
-    float[] modelViewProjection;
+    private float[] transformationMatrix;
+    private float[] modelView;
+    private float[] modelViewProjection;
 
     public Quad(){
         transformationMatrix = new float[16];
         Matrix.setIdentityM(transformationMatrix, 0);
         positionArray = new float[]{-1, 1, -1, -1, 1, 1, 1, -1};
-        textureCoordsArray = new float[8];
-        float[] tempTexCoord = new float[]{0, 0, 0, 1, 1, 0, 1, 1};
-        for(int i = 0; i<8; i++){
-            textureCoordsArray[i] = tempTexCoord[i];
-        }
+        textureCoordsArray = new float[]{0, 0, 0, 1, 1, 0, 1, 1};
         modelViewProjection = new float[16];
         modelView = new float[16];
         offsetArray = new float[2];
     }
 
+    /**
+     * Set the texture coordinates.
+     */
     public void setTextureCoor(float[] textureCoordinates){
-        for(int i = 0; i < 8; i++) {
-            textureCoordsArray[i] = textureCoordinates[i];
-        }
+        textureCoordsArray = textureCoordinates;
     }
 
-    public void setOffset(float xOffset, float yOffset){
-        offsetArray[0] = xOffset;
-        offsetArray[1] = yOffset;
-        Log.d(TAG, "setOffset: offset x, y = " +offsetArray[0]+", "+offsetArray[1]);
-    }
-
+    /**
+     * Set transformation matrix to newTransformationMatrix.
+     */
     public void setTransformationMatrix(float[] newTransformationMatrix){
         transformationMatrix = newTransformationMatrix;
     }
 
+    /**
+     * Gets the transformationMatrix.
+     *
+     * @return the transformationMatrix as a float array.
+     */
     public float[] getTransformationMatrix(){
         return transformationMatrix;
     }
@@ -91,18 +91,17 @@ public class Quad {
      * Setup openGl program, attach shader and texture.
      *
      * @param texture the texture to be drawn
-     * @param vertexShader the vertex shader to be attached to GUI program
-     * @param fragmentShader the fragment shader to be attached to GUI program
+     * @param vertexShader the vertex shader to be attached to program
+     * @param fragmentShader the fragment shader to be attached to program
      */
     public void setUpOpenGl(int texture, int vertexShader, int fragmentShader){
-        textureID = texture;
+        textureHandle = texture;
         program = GLES20.glCreateProgram();
         GLES20.glAttachShader(program, vertexShader);
         GLES20.glAttachShader(program, fragmentShader);
         GLES20.glLinkProgram(program);
         GLES20.glUseProgram(program);
 
-        //checkGLError("Floor program");
         textureParam = GLES20.glGetUniformLocation(program, "u_Texture");
         modelViewProjectionMatrixParam = GLES20.glGetUniformLocation(program, "u_MVPMatrix");
 
@@ -112,7 +111,8 @@ public class Quad {
     }
 
     /**
-     * Setup openGl program, attach shader and texture.
+     * Use view and perspective to calculate model view projection matrix to be passed as a uniform.
+     * Draws the quad.
      *
      * @param view the view matrix
      * @param perspective the eye perspective
@@ -126,7 +126,7 @@ public class Quad {
         GLES20.glActiveTexture(GLES20.GL_TEXTURE0);
 
         // Bind the texture to this unit.
-        GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, textureID);
+        GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, textureHandle);
 
         // Tell the texture uniform sampler to use this texture in the shader by binding to texture unit 0.
         GLES20.glUniform1i(textureParam, 0);

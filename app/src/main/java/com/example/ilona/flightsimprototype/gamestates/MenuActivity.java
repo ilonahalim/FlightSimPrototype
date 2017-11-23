@@ -27,6 +27,14 @@ import com.google.vr.sdk.base.Viewport;
 
 import javax.microedition.khronos.egl.EGLConfig;
 
+/**
+ * Class: MenuActivity
+ * Author: Ilona
+ * <p> The purpose of this class is as a controller and model of the menu function.
+ * It displays a Skybox, the 3D layered game title, subtitle, menu options, controller guide and instructions.
+ * It ensures that a controller is always connected to the device before the player can interact with the game.</>
+ */
+
 public class MenuActivity extends GvrActivity implements GvrView.StereoRenderer{
 
     private static final String TAG = "MenuActivity";
@@ -34,6 +42,8 @@ public class MenuActivity extends GvrActivity implements GvrView.StereoRenderer{
     private static final float Z_FAR = 1000.0f;
 
     private Camera camera;
+
+    //menu layered quads
     private Quad menuTitle;
     private Quad menuSubtitle;
     private Quad menuInstruction0;
@@ -42,8 +52,9 @@ public class MenuActivity extends GvrActivity implements GvrView.StereoRenderer{
     private Quad menuOption2;
     private Quad menuOption3;
     private Quad menuSelection;
+    private Quad menuGuide;
 
-    private int selection;
+    private int selection; //stores user menu selection
 
     private SkyBox menuSkybox;
     private float[] modelSkybox;
@@ -55,6 +66,7 @@ public class MenuActivity extends GvrActivity implements GvrView.StereoRenderer{
 
     private ShaderLoader shaderLoader;
 
+    private static final String BACKGROUND_SOUND_FILE = "menu_sound.3gp";
     private GvrAudioEngine gvrAudioEngine;
     private volatile int sourceId = GvrAudioEngine.INVALID_ID;
 
@@ -94,10 +106,17 @@ public class MenuActivity extends GvrActivity implements GvrView.StereoRenderer{
         menuOption2 = new Quad();
         menuOption3 = new Quad();
         menuSelection = new Quad();
+        menuGuide = new Quad();
 
         selection = 2;
+
+        // Initialize 3D audio engine.
+        gvrAudioEngine = new GvrAudioEngine(this, GvrAudioEngine.RenderingMode.BINAURAL_HIGH_QUALITY);
     }
 
+    /**
+     * Sets view to GvrView.
+     */
     public void initializeGvrView() {
         setContentView(R.layout.activity_main);
 
@@ -121,6 +140,30 @@ public class MenuActivity extends GvrActivity implements GvrView.StereoRenderer{
         setGvrView(gvrView);
     }
 
+    /**
+     * Overriden method from GvrActivity class.
+     * Pauses audio.
+     */
+    @Override
+    public void onPause() {
+        gvrAudioEngine.pause();
+        super.onPause(); //pause audio.
+    }
+
+    /**
+     * Overriden method from GvrActivity class.
+     * Resumes audio.
+     */
+    @Override
+    public void onResume() {
+        super.onResume();
+        gvrAudioEngine.resume(); //resume audio play.
+    }
+
+    /**
+     * Gets the active controller before drawing frames.
+     * Implemented method from StereoRenderer class.
+     */
     @Override
     public void onNewFrame(HeadTransform headTransform) {
         for(int i = 0; i<inputManager.getInputDeviceIds().length; i++){
@@ -130,8 +173,15 @@ public class MenuActivity extends GvrActivity implements GvrView.StereoRenderer{
             }
             Log.d(TAG, "onNewFrame: Input Device: " + inputManager.getInputDevice(inputManager.getInputDeviceIds()[i]).getControllerNumber());
         }
+
+        // Regular update call to GVR audio engine.
+        gvrAudioEngine.update();
     }
 
+    /**
+     * Implemented method from StereoRenderer class. Draws frame for one eye.
+     * Applies transformations then draw the skybox and quads.
+     */
     @Override
     public void onDrawEye(Eye eye) {
         GLES20.glEnable(GLES20.GL_DEPTH_TEST);
@@ -143,8 +193,9 @@ public class MenuActivity extends GvrActivity implements GvrView.StereoRenderer{
 
         Matrix.multiplyMM(modelView, 0, view, 0, modelSkybox, 0);
         Matrix.multiplyMM(modelViewProjection, 0, perspective, 0, modelView, 0);
-        menuSkybox.drawSkybox(modelViewProjection);
+        menuSkybox.draw(modelViewProjection);
 
+        menuGuide.draw(view, perspective);
         menuTitle.draw(view, perspective);
         menuSubtitle.draw(view, perspective);
 
@@ -164,18 +215,41 @@ public class MenuActivity extends GvrActivity implements GvrView.StereoRenderer{
 
     }
 
+    /**
+     * Implemented method from StereoRenderer class.
+     */
     @Override
     public void onFinishFrame(Viewport viewport) {
 
     }
 
+    /**
+     * Implemented method from StereoRenderer class.
+     */
     @Override
     public void onSurfaceChanged(int i, int i1) {
 
     }
 
+    /**
+     * Implemented method from StereoRenderer class.
+     * Load shaders and textures. Set up the quads and skybox when surface is created.
+     */
     @Override
     public void onSurfaceCreated(EGLConfig eglConfig) {
+        new Thread(
+                new Runnable() {
+                    @Override
+                    public void run() {
+                        gvrAudioEngine.preloadSoundFile(BACKGROUND_SOUND_FILE);
+                        sourceId = gvrAudioEngine.createSoundObject(BACKGROUND_SOUND_FILE);
+                        gvrAudioEngine.setSoundObjectPosition(
+                                sourceId, modelPosition[0], modelPosition[1], modelPosition[2]);
+                        gvrAudioEngine.playSound(sourceId, true);
+                    }
+                })
+                .start();
+
         inputManager = (InputManager) App.context().getSystemService(Context.INPUT_SERVICE);
 
         int skyVertexShader = shaderLoader.loadGLShader(GLES20.GL_VERTEX_SHADER, R.raw.skybox_vertex);
@@ -197,11 +271,21 @@ public class MenuActivity extends GvrActivity implements GvrView.StereoRenderer{
         Matrix.setIdentityM(modelSkybox, 0);
         Matrix.translateM(modelSkybox, 0, modelPosition[0], modelPosition[1], modelPosition[2]);
 
+        menuGuide.setUpOpenGl(TextureLoader.loadTexture(App.context(), R.drawable.menu_controller_guide), quadVertexShader, quadFragmentShader);
+        menuOption1.setTextureCoor(new float[]{0, 0, 0, 1, 0.95f, 0, 0.9f, 1});
+        menuGuide.setBuffers();
+        tempMatrix = menuGuide.getTransformationMatrix();
+        //Matrix.rotateM(tempMatrix, 0, 180, 0, 1, 0);
+        //Matrix.translateM(tempMatrix, 0, 0, 0, 7f);
+        //Matrix.rotateM(tempMatrix, 0, 180, 0, 1, 0);
+        Matrix.translateM(tempMatrix, 0, -2.5f, 0, 5.25f);
+        Matrix.rotateM(tempMatrix, 0, 90, 0, 1, 0);
+        menuGuide.setTransformationMatrix(tempMatrix);
+
         menuTitle.setUpOpenGl(TextureLoader.loadTexture(App.context(), R.drawable.menu_title), quadVertexShader, quadFragmentShader);
         menuTitle.setBuffers();
         tempMatrix = menuTitle.getTransformationMatrix();
         Matrix.translateM(tempMatrix, 0, 0, 0, 3.5f);
-        //Matrix.scaleM(tempMatrix, 0, 2, 2, 0);
         menuTitle.setTransformationMatrix(tempMatrix);
 
         menuSubtitle.setUpOpenGl(TextureLoader.loadTexture(App.context(), R.drawable.menu_subtitle), quadVertexShader, quadFragmentShader);
@@ -256,13 +340,20 @@ public class MenuActivity extends GvrActivity implements GvrView.StereoRenderer{
         Matrix.translateM(tempMatrix, 0, 0, -0.25f, 3.5f);
         Matrix.scaleM(tempMatrix, 0, 0.26f, 0.26f, 0);
         menuSelection.setTransformationMatrix(tempMatrix);
+
     }
 
+    /**
+     * Implemented method from StereoRenderer class.
+     */
     @Override
     public void onRendererShutdown() {
 
     }
 
+    /**
+     * Override method from Activity class to handle controller input.
+     */
     @Override
     public boolean dispatchKeyEvent(KeyEvent event) {
         if(event.getAction() != KeyEvent.ACTION_DOWN) {
@@ -294,6 +385,9 @@ public class MenuActivity extends GvrActivity implements GvrView.StereoRenderer{
         return true; //hides controller's in built events from android so app doesn't close on B button
     }
 
+    /**
+     * Moves the selection cursor based on current selection.
+     */
     private void moveSelection(){
         tempMatrix = menuSelection.getTransformationMatrix();
         if(selection == 1){

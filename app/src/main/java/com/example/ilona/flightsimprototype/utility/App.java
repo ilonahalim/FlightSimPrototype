@@ -3,7 +3,9 @@ package com.example.ilona.flightsimprototype.utility;
 import android.content.Context;
 
 /**
- * Created by Ilona on 26-Sep-17.
+ * Class: App
+ * Author: Ilona
+ * <p> The purpose of this class is to get the application's context.</>
  */
 
 public class App extends android.app.Application {

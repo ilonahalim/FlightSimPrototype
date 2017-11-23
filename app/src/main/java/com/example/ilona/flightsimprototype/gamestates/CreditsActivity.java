@@ -1,20 +1,16 @@
 package com.example.ilona.flightsimprototype.gamestates;
 
 import android.content.Intent;
-import android.hardware.input.InputManager;
 import android.opengl.GLES20;
 import android.opengl.Matrix;
 import android.os.Bundle;
-import android.view.InputDevice;
 import android.view.KeyEvent;
 
 import com.example.ilona.flightsimprototype.R;
 import com.example.ilona.flightsimprototype.loaders.ShaderLoader;
 import com.example.ilona.flightsimprototype.loaders.TextureLoader;
 import com.example.ilona.flightsimprototype.models.Camera;
-import com.example.ilona.flightsimprototype.models.GUI;
 import com.example.ilona.flightsimprototype.models.Quad;
-import com.example.ilona.flightsimprototype.models.SkyBox;
 import com.example.ilona.flightsimprototype.utility.App;
 import com.google.vr.sdk.audio.GvrAudioEngine;
 import com.google.vr.sdk.base.AndroidCompat;
@@ -26,24 +22,29 @@ import com.google.vr.sdk.base.Viewport;
 
 import javax.microedition.khronos.egl.EGLConfig;
 
+/**
+ * Class: CreditsActivity
+ * Author: Ilona
+ * <p> The purpose of this class is as a controller and model of the Credits function.
+ * It displays a simple quad containing the credits text and scroll it up.</>
+ */
+
 public class CreditsActivity extends GvrActivity implements GvrView.StereoRenderer{
 
     private static final String TAG = "CreditsActivity";
     private static final float Z_NEAR = 0.1f;
-    private static final float Z_FAR = 2000.0f;
+    private static final float Z_FAR = 100.0f;
 
     private Camera camera;
-    private Quad menuTitle;
-    private GUI myGui;
+    private Quad creditsContent;
 
     private float[] view;
-    private float[] modelViewProjection;
-    private float[] modelView;
 
     private ShaderLoader shaderLoader;
 
     private float counter;
 
+    private static final String BACKGROUND_SOUND_FILE = "gameover_sound.3gp";
     private GvrAudioEngine gvrAudioEngine;
     private volatile int sourceId = GvrAudioEngine.INVALID_ID;
 
@@ -57,19 +58,20 @@ public class CreditsActivity extends GvrActivity implements GvrView.StereoRender
         initializeGvrView();
 
         view = new float[16];
-        modelViewProjection = new float[16];
-        modelView = new float[16];
 
         camera = new Camera();
-        myGui = new GUI();
-        menuTitle = new Quad();
+        creditsContent = new Quad();
 
         counter = -2;
 
         shaderLoader = new ShaderLoader();
-
+        // Initialize 3D audio engine.
+        gvrAudioEngine = new GvrAudioEngine(this, GvrAudioEngine.RenderingMode.BINAURAL_HIGH_QUALITY);
     }
 
+    /**
+     * Sets view to GvrView.
+     */
     public void initializeGvrView() {
         setContentView(R.layout.activity_main);
 
@@ -93,11 +95,39 @@ public class CreditsActivity extends GvrActivity implements GvrView.StereoRender
         setGvrView(gvrView);
     }
 
+    /**
+     * Override method from GvrActivity.
+     * Pauses audio.
+     */
     @Override
-    public void onNewFrame(HeadTransform headTransform) {
-
+    public void onPause() {
+        gvrAudioEngine.pause();
+        super.onPause();
     }
 
+    /**
+     * Override method from GvrActivity.
+     * Resumes audio.
+     */
+    @Override
+    public void onResume() {
+        super.onResume();
+        gvrAudioEngine.resume();
+    }
+
+    /**
+     * Implemented method from StereoRenderer.
+     */
+    @Override
+    public void onNewFrame(HeadTransform headTransform) {
+        // Update call to GVR audio engine.
+        gvrAudioEngine.update();
+    }
+
+    /**
+     * Implemented method from StereoRenderer.
+     * Draws frame for one eye. Applies transformations then draw the quad.
+     */
     @Override
     public void onDrawEye(Eye eye) {
         float[] tempMatrix = new float[16];
@@ -108,55 +138,68 @@ public class CreditsActivity extends GvrActivity implements GvrView.StereoRender
 
         float[] perspective = eye.getPerspective(Z_NEAR, Z_FAR);
 
-        myGui.draw(0, 0);
         Matrix.setIdentityM(tempMatrix, 0);
         Matrix.translateM(tempMatrix, 0, 0, counter, 3.5f);
         Matrix.scaleM(tempMatrix, 0, 2, 2, 0);
-        menuTitle.setTransformationMatrix(tempMatrix);
-        menuTitle.draw(view, perspective);
+        creditsContent.setTransformationMatrix(tempMatrix);
+        creditsContent.draw(view, perspective);
         counter+= 0.001f;
     }
 
+    /**
+     * Implemented method from StereoRenderer.
+     */
     @Override
     public void onFinishFrame(Viewport viewport) {
 
     }
 
+    /**
+     * Implemented method from StereoRenderer.
+     */
     @Override
     public void onSurfaceChanged(int i, int i1) {
 
     }
 
+    /**
+     * Implemented method from StereoRenderer.
+     * Load shaders and textures. Set up the when surface is created.
+     */
     @Override
     public void onSurfaceCreated(EGLConfig eglConfig) {
-        int guiVertexShader = shaderLoader.loadGLShader(GLES20.GL_VERTEX_SHADER, R.raw.gui_vertex);
-        int guiFragmentShader = shaderLoader.loadGLShader(GLES20.GL_FRAGMENT_SHADER, R.raw.gui_fragment);
-
         int quadVertexShader = shaderLoader.loadGLShader(GLES20.GL_VERTEX_SHADER, R.raw.quad_vertex);
         int quadFragmentShader = shaderLoader.loadGLShader(GLES20.GL_FRAGMENT_SHADER, R.raw.quad_fragment);
 
-        myGui = new GUI();
-        myGui.setUpOpenGl(TextureLoader.loadTexture(App.context(), R.drawable.credits_text), guiVertexShader, guiFragmentShader);
-        myGui.setPositionTexture();
-        //myGui.transform(0.75f, 0.75f, 0,0,0);
-        myGui.setBuffers();
+        creditsContent.setUpOpenGl(TextureLoader.loadTexture(App.context(), R.drawable.credits_text_long), quadVertexShader, quadFragmentShader);
+        creditsContent.setBuffers();
 
-        //float[] tempMatrix = new float[16];
-        menuTitle.setUpOpenGl(TextureLoader.loadTexture(App.context(), R.drawable.credits_text_long), quadVertexShader, quadFragmentShader);
-        menuTitle.setBuffers();
-        /*
-        tempMatrix = menuTitle.getTransformationMatrix();
-        Matrix.translateM(tempMatrix, 0, 0, 0, 3.5f);
-        //Matrix.scaleM(tempMatrix, 0, 2, 2, 0);
-        menuTitle.setTransformationMatrix(tempMatrix);
-        */
+        new Thread(
+                new Runnable() {
+                    @Override
+                    public void run() {
+                        gvrAudioEngine.preloadSoundFile(BACKGROUND_SOUND_FILE);
+                        sourceId = gvrAudioEngine.createSoundObject(BACKGROUND_SOUND_FILE);
+                        gvrAudioEngine.setSoundObjectPosition(
+                                sourceId, 0, 0, 0);
+                        gvrAudioEngine.playSound(sourceId, true /* looped playback */);
+                    }
+                })
+                .start();
     }
 
+    /**
+     * Implemented method from StereoRenderer.
+     */
     @Override
     public void onRendererShutdown() {
 
     }
 
+    /**
+     * Override method from Activity.
+     * Handles controller button input.
+     */
     @Override
     public boolean dispatchKeyEvent(KeyEvent event) {
         if(event.getAction() != KeyEvent.ACTION_DOWN) {

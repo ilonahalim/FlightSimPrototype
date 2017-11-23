@@ -1,4 +1,4 @@
-precision mediump float;
+precision mediump float; // Set default precision.
 
 uniform vec3 u_LightPos;        // The position of the light in eye space.
 uniform sampler2D u_Texture;    // The input texture.
@@ -8,19 +8,13 @@ varying vec3 v_Position;        // Interpolated position for this fragment.
 varying vec3 v_Normal;          // Interpolated normal for this fragment.
 varying vec2 v_TexCoordinate;   // Interpolated texture coordinate per fragment.
 
-// The entry point for our fragment shader.
 void main()
 {
-    // Get a lighting direction vector from the light to the vertex.
-    vec3 lightVector = normalize(u_LightPos - v_Position);
+    vec3 lightVector = normalize(u_LightPos - v_Position); // Get a lighting direction vector from the light to the vertex.
 
-    // Calculate the dot product of the light vector and vertex normal. If the normal and light vector are
-    // pointing in the same direction then it will get max illumination.
-    float diffuse = max(dot(v_Normal, lightVector), 0.0);
+    float diffuse = max(dot(v_Normal, lightVector), 0.0); // Calculate the dot product of the light vector and vertex normal.
 
-    // Add ambient lighting
-    diffuse = diffuse + 0.3;
+    diffuse = diffuse + 0.3; // Add ambient lighting
 
-    // Multiply the color by the diffuse illumination level and texture value to get final output color.
-    gl_FragColor = (diffuse * texture2D(u_Texture, v_TexCoordinate).rgba);
+    gl_FragColor = (diffuse * texture2D(u_Texture, v_TexCoordinate).rgba); // Set fragment color.
 }

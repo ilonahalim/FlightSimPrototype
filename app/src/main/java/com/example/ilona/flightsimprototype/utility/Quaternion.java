@@ -4,11 +4,18 @@ import android.opengl.Matrix;
 
 import com.google.vr.sdk.base.sensors.internal.Vector3d;
 
-import static java.lang.Math.acos;
 import static java.lang.Math.cos;
 import static java.lang.Math.sin;
 import static java.lang.Math.sqrt;
 
+/**
+ * Class: Quaternion
+ * Author: Ilona
+ * <p> The purpose of this class is to store transformation in the form of quaternion.
+ * It also can return a conversion of quaternion into matrix, multiplication result of two quaternion
+ * and multiplication result of quaternion and vector.
+ * This class will be used mainly to control model movement.</>
+ */
 
 public class Quaternion {
 
@@ -25,18 +32,24 @@ public class Quaternion {
         w = w1;
     }
 
-    //returns the transformation matrix form of the quaternion
+    /**
+     * Returns quaternion as a transformation matrix.
+     *
+     */
     public float[] getMatrix()
     {
-        float[] temp1   =   {
+        return new float[]{
         w*w + x*x - y*y - z*z,  2*x*y + 2*w*z, 	        2*x*z - 2*w*y,        	0,
                 2*x*y - 2*w*z, 	      w*w - x*x + y*y - z*z, 	2*y*z + 2*w*x, 	        0,
                 2*x*z + 2*w*y, 	      2*y*z - 2*w*x, 	        w*w - x*x - y*y + z*z, 	0,
                 0, 	                  0,                        0,                      w*w + x*x + y*y + z*z
         };
-        return temp1;
     }
 
+    /**
+     * Returns quaternion as a transformation matrix with translation of xTrans, yTrans and zTrans.
+     *
+     */
     public float[] getTranslatedMatrix(float xTrans, float yTrans, float zTrans)
     {
         float[] translationMatrix   =   {
@@ -49,14 +62,9 @@ public class Quaternion {
         return translationMatrix;
     }
 
-
-    //gets the transformation angle
-    public double getAngle()
-    {
-        return acos(w) * 2.0;
-    }
-
-    //sets the quaternion to rotation about Vector &v1 with angle
+    /**
+     * Set the quaternion to rotate at an angle around vector
+     */
     public void formAxis(Vector3d vector, double angle)
     {
         double sinAngle = sin(angle * .5);
@@ -64,36 +72,21 @@ public class Quaternion {
         y = (float)(vector.y * sinAngle);
         z = (float)(vector.z * sinAngle);
         w = (float)cos(angle);
-/*
-        //everthing beyond this is to make suer that the magnitude
-        //of the quaternion is exactly 1, it can be off from using doubles
-        ///These lines of code ensure that it is exactly 1
-        double q = x *x + y*y + z*z + w*w;
-        float xtra = (float)sqrt(1.000000000/q);
-        x *= xtra;
-        y *= xtra;
-        z *= xtra;
-        w  *= xtra;
-        q = x *x + y*y + z*z + w*w;
-        xtra = (float)sqrt((double)1.000000000/q);
-        x *= xtra;
-        y *= xtra;
-        z *= xtra;
-        w  *= xtra;
-        */
         this.normalise();
     }
 
 
-    //Gets the conjugate of the quaternion
-    public Quaternion getConjugate()
+    /**
+     * Gets the conjugate of the quaternion
+     */
+    private Quaternion getConjugate()
     {
-        Quaternion temp = new Quaternion(-x, -y, -z, w);
-        return temp;
+        return new Quaternion(-x, -y, -z, w);
     }
 
-
-    ///normalizes the quaternion so that the magnitude is 1
+    /**
+     * normalizes the quaternion.
+     */
     public void normalise()
     {
         double mag2 = w * w + x * x + y * y + z * z;
@@ -106,26 +99,27 @@ public class Quaternion {
         }
     }
 
-
-    //multiply 2 quaternions together
-    //Returns a quaternion that results from two combined quaternions
-    public Quaternion multiplyQuatWith(Quaternion rq)
+    /**
+     * multiply 2 quaternions together.
+     * @return a quaternion that results from two combined quaternions.
+     */
+    public Quaternion multiplyQuatWith(Quaternion quaternion)
     {
-        Quaternion temp = new Quaternion(w * rq.x + x * rq.w + y * rq.z - z * rq.y,
-                w * rq.y + y * rq.w + z * rq.x - x * rq.z,
-                w * rq.z + z * rq.w + x * rq.y - y * rq.x,
-                w * rq.w - x * rq.x - y * rq.y - z * rq.z);
-        return temp;
+        return new Quaternion(w * quaternion.x + x * quaternion.w + y * quaternion.z - z * quaternion.y,
+                w * quaternion.y + y * quaternion.w + z * quaternion.x - x * quaternion.z,
+                w * quaternion.z + z * quaternion.w + x * quaternion.y - y * quaternion.x,
+                w * quaternion.w - x * quaternion.x - y * quaternion.y - z * quaternion.z);
     }
 
-    //Applies quaternion to a vector and returns the transformed vector.
+    /**
+     * Applies quaternion to a vector and returns the transformed vector.
+     */
      public Vector3d multiplyQuatWith(Vector3d vector)
     {
         Quaternion vectorQuat = new Quaternion((float)vector.x, (float)vector.y, (float)vector.z, 0);
         Quaternion resultQuat;
         resultQuat = vectorQuat.multiplyQuatWith(this.getConjugate()); //Multiply by the quaternion's conjugate
         resultQuat = this.multiplyQuatWith(resultQuat); //Multiply by the quaternion
-        Vector3d resultVec = new Vector3d(resultQuat.x, resultQuat.y, resultQuat.z);
-        return resultVec;
+        return new Vector3d(resultQuat.x, resultQuat.y, resultQuat.z);
     }
 }
