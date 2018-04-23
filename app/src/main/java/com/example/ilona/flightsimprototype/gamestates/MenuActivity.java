@@ -245,7 +245,7 @@ public class MenuActivity extends GvrActivity implements GvrView.StereoRenderer{
                         sourceId = gvrAudioEngine.createSoundObject(BACKGROUND_SOUND_FILE);
                         gvrAudioEngine.setSoundObjectPosition(
                                 sourceId, modelPosition[0], modelPosition[1], modelPosition[2]);
-                        gvrAudioEngine.playSound(sourceId, true);
+                        //gvrAudioEngine.playSound(sourceId, true);
                     }
                 })
                 .start();

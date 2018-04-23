@@ -282,7 +282,7 @@ public class PlayActivity extends GvrActivity implements GvrView.StereoRenderer{
                         sourceId = gvrAudioEngine.createSoundObject(BACKGROUND_SOUND_FILE);
                         gvrAudioEngine.setSoundObjectPosition(
                                 sourceId, modelPosition[0], modelPosition[1], modelPosition[2]);
-                        gvrAudioEngine.playSound(sourceId, true /* looped playback */);
+                        //gvrAudioEngine.playSound(sourceId, true /* looped playback */);
                         // Preload an unspatialized sound to be played on a successful trigger on the cube.
                         gvrAudioEngine.preloadSoundFile(CRASH_SOUND_FILE);
                     }
@@ -543,7 +543,7 @@ public class PlayActivity extends GvrActivity implements GvrView.StereoRenderer{
         }
         else{
             crashSourceId = gvrAudioEngine.createStereoSound(CRASH_SOUND_FILE);
-            gvrAudioEngine.playSound(crashSourceId, false /* looping disabled */);
+            //gvrAudioEngine.playSound(crashSourceId, false /* looping disabled */);
             vibrator.vibrate(50);
             Intent intent = new Intent(this, GameOverActivity.class);
             startActivity(intent);

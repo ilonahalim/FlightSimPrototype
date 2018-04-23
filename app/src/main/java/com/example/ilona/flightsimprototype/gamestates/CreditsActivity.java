@@ -182,7 +182,7 @@ public class CreditsActivity extends GvrActivity implements GvrView.StereoRender
                         sourceId = gvrAudioEngine.createSoundObject(BACKGROUND_SOUND_FILE);
                         gvrAudioEngine.setSoundObjectPosition(
                                 sourceId, 0, 0, 0);
-                        gvrAudioEngine.playSound(sourceId, true /* looped playback */);
+                        //gvrAudioEngine.playSound(sourceId, true /* looped playback */);
                     }
                 })
                 .start();
